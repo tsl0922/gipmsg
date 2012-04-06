@@ -23,14 +23,15 @@
 static packet_no_t packet_no = 0;
 
 bool
-parse_message(ulong fromAddr, Message *msg, const char *msg_buf, size_t buf_len)
+parse_message(ulong fromAddr, Message * msg, const char *msg_buf,
+	      size_t buf_len)
 {
 	char *tok = NULL;
 	char *ptr = NULL;
 	command_no_t command_no = 0;
 	char *tmp_str;
 
-	if(!msg || !msg_buf || buf_len < 0)
+	if (!msg || !msg_buf || buf_len < 0)
 		return false;
 
 	GET_CLOCK_COUNT(&msg->tv);
@@ -39,25 +40,25 @@ parse_message(ulong fromAddr, Message *msg, const char *msg_buf, size_t buf_len)
 	/* version */
 	tok = seprate_token(msg_buf, ':', &ptr);
 	msg->version = strdup(tok);
-	if(!ptr)
+	if (!ptr)
 		return false;
 
 	/* packet number */
 	tok = seprate_token(msg_buf, ':', &ptr);
-	msg->packetNo= strtoll(tok, (char **)NULL, 10);
-	if(!ptr)
+	msg->packetNo = strtoll(tok, (char **)NULL, 10);
+	if (!ptr)
 		return false;
 
 	/* sender name */
 	tok = seprate_token(msg_buf, ':', &ptr);
 	msg->userName = strdup(tok);
-	if(!ptr)
+	if (!ptr)
 		return false;
 
 	/* host name */
 	tok = seprate_token(msg_buf, ':', &ptr);
 	msg->hostName = strdup(tok);
-	if(!ptr)
+	if (!ptr)
 		return false;
 
 	/* command */
@@ -65,7 +66,7 @@ parse_message(ulong fromAddr, Message *msg, const char *msg_buf, size_t buf_len)
 	command_no = strtol(tok, (char **)NULL, 10);
 	msg->commandNo = ipmsg_flags_get_command(command_no);
 	msg->commandOpts = ipmsg_flags_get_opt(command_no);
-	if(!ptr)
+	if (!ptr)
 		return false;
 
 	/* message */
@@ -73,8 +74,9 @@ parse_message(ulong fromAddr, Message *msg, const char *msg_buf, size_t buf_len)
 	msg->message = strdup(tok);
 
 	/* extra data */
-	if(ptr && (ptr - msg_buf < buf_len)) {
-		if(*ptr == ':') ++ptr;
+	if (ptr && (ptr - msg_buf < buf_len)) {
+		if (*ptr == ':')
+			++ptr;
 		msg->attach = strdup(ptr);
 	}
 
@@ -89,8 +91,8 @@ parse_message(ulong fromAddr, Message *msg, const char *msg_buf, size_t buf_len)
  */
 
 void
-build_packet(char *packet_p, const command_no_t command, const char *message, 
-	const char *attach, size_t *len_p, packet_no_t *packet_no_p)
+build_packet(char *packet_p, const command_no_t command, const char *message,
+	     const char *attach, size_t * len_p, packet_no_t * packet_no_p)
 {
 	packet_no_t this_packet_no;
 	char *sender_name;
@@ -98,7 +100,7 @@ build_packet(char *packet_p, const command_no_t command, const char *message,
 	char *common;
 	size_t len;
 
-	if(!packet_p || !len_p || !packet_no_p)
+	if (!packet_p || !len_p || !packet_no_p)
 		return;
 
 	common = (char *)malloc(MAX_UDPBUF);
@@ -112,26 +114,25 @@ build_packet(char *packet_p, const command_no_t command, const char *message,
 
 	/* senderhost: hostname */
 	sender_host = get_sys_host_name();
-	
-	len = 0;
-	
-	len += snprintf(common, MAX_UDPBUF, IPMSG_COMMON_MSG_FMT,
-		this_packet_no, sender_name, sender_host, command);
 
-	if(message) {
+	len = 0;
+
+	len += snprintf(common, MAX_UDPBUF, IPMSG_COMMON_MSG_FMT,
+			this_packet_no, sender_name, sender_host, command);
+
+	if (message) {
 		len += (strlen(message) + 1);
 	}
-	if(attach) {
+	if (attach) {
 		len += (strlen(attach) + 1);
 	}
 
 	memset(packet_p, 0, len);
-	*len_p = snprintf(packet_p, len, IPMSG_ALLMSG_PACKET_FMT, 
-		common, 
-		(message != NULL)?message:"",
-		IPMSG_MSG_EXT_DELIM,
-		(attach != NULL)?attach:"");
-	
+	*len_p = snprintf(packet_p, len, IPMSG_ALLMSG_PACKET_FMT,
+			  common,
+			  (message != NULL) ? message : "",
+			  IPMSG_MSG_EXT_DELIM, (attach != NULL) ? attach : "");
+
 	*len_p = len;
 	*packet_no_p = this_packet_no;
 
@@ -140,10 +141,9 @@ build_packet(char *packet_p, const command_no_t command, const char *message,
 	FREE_WITH_CHECK(common);
 }
 
-void 
-free_message_data(Message *msg)
+void free_message_data(Message * msg)
 {
-	if(msg != NULL) {
+	if (msg != NULL) {
 		FREE_WITH_CHECK(msg->version);
 		FREE_WITH_CHECK(msg->userName);
 		FREE_WITH_CHECK(msg->hostName);
@@ -152,61 +152,59 @@ free_message_data(Message *msg)
 	}
 }
 
-Message *
-dup_message(Message *msg) {
-	Message *new_msg = (Message *)malloc(sizeof(Message));
+Message *dup_message(Message * msg)
+{
+	Message *new_msg = (Message *) malloc(sizeof(Message));
 	memset(new_msg, 0, sizeof(Message));
 	memcpy(new_msg, msg, sizeof(Message));
 
 	return new_msg;
 }
 
-char *
-msg_get_version(const Message *msg)
+char *msg_get_version(const Message * msg)
 {
-	if(!msg)
+	if (!msg)
 		return IPMSG_UNKNOWN_NAME;
-	return (msg->version != NULL && strlen(msg->version))?msg->version:IPMSG_UNKNOWN_NAME;
+	return (msg->version != NULL
+		&& strlen(msg->version)) ? msg->version : IPMSG_UNKNOWN_NAME;
 }
 
-char *
-msg_get_userName(const Message *msg)
+char *msg_get_userName(const Message * msg)
 {
-	if(!msg)
+	if (!msg)
 		return IPMSG_UNKNOWN_NAME;
-	return (msg->userName != NULL && strlen(msg->userName))?msg->userName:IPMSG_UNKNOWN_NAME;
+	return (msg->userName != NULL
+		&& strlen(msg->userName)) ? msg->userName : IPMSG_UNKNOWN_NAME;
 }
 
-char *
-msg_get_hostName(const Message *msg)
+char *msg_get_hostName(const Message * msg)
 {
-	if(!msg)
+	if (!msg)
 		return IPMSG_UNKNOWN_NAME;
-	return (msg->hostName != NULL && strlen(msg->hostName))?msg->hostName:IPMSG_UNKNOWN_NAME;
+	return (msg->hostName != NULL
+		&& strlen(msg->hostName)) ? msg->hostName : IPMSG_UNKNOWN_NAME;
 }
 
-char *
-msg_get_groupName(const Message *msg)
+char *msg_get_groupName(const Message * msg)
 {
-	if(!msg)
+	if (!msg)
 		return IPMSG_UNKNOWN_NAME;
-	return (msg->attach != NULL && strlen(msg->attach))?msg->attach:IPMSG_UNKNOWN_NAME;
+	return (msg->attach != NULL
+		&& strlen(msg->attach)) ? msg->attach : IPMSG_UNKNOWN_NAME;
 }
 
-char *
-msg_get_nickName(const Message *msg)
+char *msg_get_nickName(const Message * msg)
 {
-	if(!msg)
+	if (!msg)
 		return IPMSG_UNKNOWN_NAME;
-	return (msg->message != NULL && strlen(msg->message))?msg->message:msg_get_userName(msg);
+	return (msg->message != NULL
+		&& strlen(msg->message)) ? msg->message : msg_get_userName(msg);
 }
 
-char *
-msg_get_encode(const Message *msg)
+char *msg_get_encode(const Message * msg)
 {
-	if(msg->commandOpts & IPMSG_UTF8OPT) {
+	if (msg->commandOpts & IPMSG_UTF8OPT) {
 		return "utf-8";
 	}
 	return IPMSG_UNKNOWN_NAME;
 }
-

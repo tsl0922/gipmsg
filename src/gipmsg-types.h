@@ -24,11 +24,11 @@
 typedef struct _MainWindow MainWindow;
 typedef struct _SendDlg SendDlg;
 
-struct _MainWindow{
+struct _MainWindow {
 	GList *sendDlgList;
 	SendDlg *dlg;
 	User *user;
-	
+
 	GtkWidget *window;
 	GtkWidget *eventbox;
 	GtkStatusIcon *trayIcon;
@@ -43,11 +43,11 @@ struct _MainWindow{
 };
 
 typedef enum {
-	ST_GETCRYPT=0,
+	ST_GETCRYPT = 0,
 	ST_MAKECRYPTMSG,
 	ST_MAKEMSG,
 	ST_SENDMSG,
-	ST_DONE 
+	ST_DONE
 } SendStatus;
 
 typedef struct {
@@ -67,20 +67,20 @@ struct _SendDlg {
 	GList *send_list;
 	GStaticMutex mutex;
 	gint timerId;
-	Message *msg;				/* the last recieved msg */
+	Message *msg;		/* the last recieved msg */
 	gchar *text;
 	gchar *fontName;
 	GtkWidget *emotionDlg;
-	
+
 	/* main widget begin */
 	GtkWidget *dialog;
-	GtkWidget *head_icon;		/* head icon */
-	GtkWidget *photo_image;		/* photo image */
-	GtkWidget *state_label;		/* user state */
-	GtkWidget *name_label;		/* nick name*/
-	GtkWidget *info_label;		/* user info*/
-	GtkWidget *recv_text;		/* message area*/
-	GtkWidget *send_text;		/* input area*/
+	GtkWidget *head_icon;	/* head icon */
+	GtkWidget *photo_image;	/* photo image */
+	GtkWidget *state_label;	/* user state */
+	GtkWidget *name_label;	/* nick name */
+	GtkWidget *info_label;	/* user info */
+	GtkWidget *recv_text;	/* message area */
+	GtkWidget *send_text;	/* input area */
 	GtkTextMark *mark;
 	GtkTextBuffer *send_buffer;
 	GtkTextBuffer *recv_buffer;
@@ -89,8 +89,8 @@ struct _SendDlg {
 
 	GtkWidget *rt_box;
 	GtkWidget *rb_box;
-	GtkWidget *rt_evbox;		/* GtkEventBox */
-	GtkWidget *rb_evbox;		/* GtkEventBox */
+	GtkWidget *rt_evbox;	/* GtkEventBox */
+	GtkWidget *rb_evbox;	/* GtkEventBox */
 	GtkWidget *rt_label;
 	GtkWidget *rb_label;
 	GtkWidget *photo_frame;
@@ -98,8 +98,8 @@ struct _SendDlg {
 	GtkWidget *recv_progress_bar;
 	GtkWidget *send_file_scroll;
 	GtkWidget *send_progress_bar;
-	GtkWidget *recv_file_tree;		/* file to recieve */
-	GtkWidget *send_file_tree;		/* file to send */
+	GtkWidget *recv_file_tree;	/* file to recieve */
+	GtkWidget *send_file_tree;	/* file to send */
 	bool is_recv_file;
 
 	/* toolbar begin */
@@ -118,4 +118,3 @@ typedef struct {
 } DialogArgs;
 
 #endif
-

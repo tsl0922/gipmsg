@@ -23,11 +23,10 @@
 
 void ipmsg_ui_init();
 void users_tree_create_default_group();
-void users_tree_add_user(User *user);
+void users_tree_add_user(User * user);
 void users_tree_del_user(ulong ipaddr);
-void users_tree_update_user(User *user);
+void users_tree_update_user(User * user);
 void clear_users_tree();
-void notify_sendmsg(Message *msg);
-
+void notify_sendmsg(Message * msg);
 
 #endif

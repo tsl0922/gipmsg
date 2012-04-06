@@ -31,8 +31,8 @@ typedef struct {
 } Config;
 
 bool config_init();
-bool config_read(Config *config);
-bool config_write(Config *config);
+bool config_read(Config * config);
+bool config_write(Config * config);
 
 int config_get_port();
 

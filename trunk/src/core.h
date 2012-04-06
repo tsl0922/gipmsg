@@ -20,7 +20,8 @@
 
 #ifndef __CORE_H__
 #define __CORE_H__
-
+void ipmsg_core_init();
+bool socket_init(const char *pAddr, int nPort);
 void ipmsg_send_br_entry();
 void ipmsg_send_ansentry(ulong toAddr);
 void ipmsg_send_ansrecvmsg(ulong toAddr, packet_no_t packet_no);

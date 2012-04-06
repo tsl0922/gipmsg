@@ -23,12 +23,20 @@
 SOCKET udp_sock;
 SOCKET tcp_sock;
 
-static bool socket_init(const char *pAddr, int nPort);
 static gpointer udp_server_thread(gpointer data);
 static gpointer tcp_server_thread(gpointer data);
 static void ipmsg_dispatch_message(SOCKET sock, Message *msg);
 
-static bool
+void
+ipmsg_core_init()
+{
+	g_thread_create((GThreadFunc)udp_server_thread, NULL, FALSE, NULL);
+	g_thread_create((GThreadFunc)tcp_server_thread, NULL, FALSE, NULL);
+	
+	//tell everyone I am online.
+	ipmsg_send_br_entry();
+}
+bool
 socket_init(const char *pAddr, int nPort)
 {
 	struct sockaddr_in sockaddr;

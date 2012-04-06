@@ -1,0 +1,13 @@
+
+[Desktop Entry]
+Version=1.0.2
+Encoding=UTF-8
+Name=gipmsg
+Comment=Local networt message communication
+Exec=gipmsg %U
+Icon=/usr/share/gipmsg/icons/icon.png
+Terminal=false
+Type=Application
+Categories=GTK;Network;
+StartupNotify=true
+Name[zh_CN]=gipmsg

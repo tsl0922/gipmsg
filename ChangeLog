@@ -1,0 +1,12 @@
+2012.02.20 0.1
+Write the base framework of the program, both base protocol layer
+and ui,realized the simplist text message sending.
+
+2012.03.04 0.2
+Improve the ui, now the send message dialog have a better look, 
+and we can send not  only text message, but emotions.
+
+2012.04.06 0.3
+Important upgrade! The file transfer protocol has been realized,
+now we can send and recieve files or folders, although it still
+has some bugs.

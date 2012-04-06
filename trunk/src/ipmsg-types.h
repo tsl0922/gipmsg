@@ -53,16 +53,16 @@ typedef ulong packet_no_t;
 	  ( ((command_no_t)(flags)) & (IPMSG_COMMAND_OPT_MASK) )
 
 typedef struct {
-	char *version;				/* version */
-	command_no_t commandNo;		/* command */
+	char *version;		/* version */
+	command_no_t commandNo;	/* command */
 	command_no_t commandOpts;	/* command option */
-	char *userName;				/* user name */
-	char *hostName;				/* host name */
-	packet_no_t packetNo;		/* packet no */
-	struct timeval tv;			/* timestamp */
-	char *message;				/* message */
-	char *attach;			    /* attachment(file info...) */
-	ulong fromAddr;				/* from ipaddr */
+	char *userName;		/* user name */
+	char *hostName;		/* host name */
+	packet_no_t packetNo;	/* packet no */
+	struct timeval tv;	/* timestamp */
+	char *message;		/* message */
+	char *attach;		/* attachment(file info...) */
+	ulong fromAddr;		/* from ipaddr */
 } Message;
 
 /* Message Definitions end  */
@@ -72,25 +72,24 @@ typedef enum {
 	USER_STATE_OFFLINE
 } UserState;
 
-typedef struct{
-	ulong ipaddr;				/* ipaddress */
-	char *version;				/* client version */
-	char *nickName;				/* nick name */
-	char *userName;				/* user name */
-	char *hostName;				/* host name */
-	char *groupName;			/* group name */
-	char *photoImage;			/* personal photo */
-	char *headIcon;				/* head icon file */
-	char *personalSign;			/* personal sign */
-	char *encode;				/* character encode */
+typedef struct {
+	ulong ipaddr;		/* ipaddress */
+	char *version;		/* client version */
+	char *nickName;		/* nick name */
+	char *userName;		/* user name */
+	char *hostName;		/* host name */
+	char *groupName;	/* group name */
+	char *photoImage;	/* personal photo */
+	char *headIcon;		/* head icon file */
+	char *personalSign;	/* personal sign */
+	char *encode;		/* character encode */
 	UserState state;
 } User;
 
-
 typedef enum {
-	GroupTypeSystem,						/* system group */
-	GroupTypeRegular,						/* regular group */
-	GroupTypeBlack							/* black list group */
+	GroupTypeSystem,	/* system group */
+	GroupTypeRegular,	/* regular group */
+	GroupTypeBlack		/* black list group */
 } GroupType;
 
 typedef struct {
@@ -98,7 +97,6 @@ typedef struct {
 	GroupType groupType;
 	GList *users;
 } Group;
-
 
 typedef struct {
 	ulong ipaddr;
@@ -117,7 +115,6 @@ typedef struct {
 	ulong atime;
 	ulong mtime;
 	ulong ctime;
-}FileInfo;
+} FileInfo;
 
 #endif /*_IPMSG_TYPES_H_*/
-

@@ -22,13 +22,13 @@
 #define _OS_SUPPORT_H_
 
 #ifdef _LINUX
-	typedef int SOCKET;
-	typedef unsigned long  ulong;
+typedef int SOCKET;
+typedef unsigned long ulong;
 #endif
 
 #ifdef WIN32
-    typedef int socklen_t;
-	typedef unsigned long  ulong;
+typedef int socklen_t;
+typedef unsigned long ulong;
 #endif
 
 /*
@@ -72,12 +72,11 @@
 #endif
 
 #if defined(WIN32)
-  #define GET_CLOCK_COUNT(x) QueryPerformanceCounter((LARGE_INTEGER *)x)
+#define GET_CLOCK_COUNT(x) QueryPerformanceCounter((LARGE_INTEGER *)x)
 #else
-  #define GET_CLOCK_COUNT(x) gettimeofday(x, NULL)
+#define GET_CLOCK_COUNT(x) gettimeofday(x, NULL)
 #endif
 
-typedef enum {false, true} bool;
+typedef enum { false, true } bool;
 
 #endif /*_OS_SUPPORT_H_*/
-

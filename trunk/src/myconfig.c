@@ -20,18 +20,18 @@
 
 #include "common.h"
 
-bool
-config_init() {
+bool config_init()
+{
 }
 
-bool
-config_read(Config *config) {
+bool config_read(Config * config)
+{
 	GKeyFile *keyfile;
 	GError *error = NULL;
 	const gchar *file = CONFIG_FILE_PATH;
 
 	keyfile = g_key_file_new();
-	if(!g_key_file_load_from_file(keyfile, file, G_KEY_FILE_NONE, &error)) {
+	if (!g_key_file_load_from_file(keyfile, file, G_KEY_FILE_NONE, &error)) {
 		g_key_file_free(keyfile);
 		return false;
 	}
@@ -39,31 +39,32 @@ config_read(Config *config) {
 	return true;
 }
 
-bool
-config_write(Config *config) {
+bool config_write(Config * config)
+{
 	return false;
 }
 
-int
-config_get_port() {
+int config_get_port()
+{
 	return IPMSG_DEFAULT_PORT;
 }
 
-char *
-config_get_nickname() {
+char *config_get_nickname()
+{
 	return "lucky";
 }
 
-char *
-config_get_groupname() {
+char *config_get_groupname()
+{
 	return "gipmsg";
 }
 
-command_no_t
-config_get_normal_send_flags() {
+command_no_t config_get_normal_send_flags()
+{
 	return IPMSG_SENDCHECKOPT;
 }
-command_no_t
-config_get_normal_entry_flags() {
+
+command_no_t config_get_normal_entry_flags()
+{
 	return 0;
 }

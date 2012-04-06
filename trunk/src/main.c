@@ -20,37 +20,38 @@
 
 #include "common.h"
 
-int
-main(int argc, char *argv[]) {	
+int main(int argc, char *argv[])
+{
 	DEBUG_INFO("Start");
 #ifdef ENABLE_NLS
 	setlocale(LC_ALL, "");
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-	bindtextdomain(GETTEXT_PACKAGE , NULL);
+	bindtextdomain(GETTEXT_PACKAGE, NULL);
 	textdomain(GETTEXT_PACKAGE);
 #endif
 
-	if(!g_thread_supported())
+	if (!g_thread_supported())
 		g_thread_init(NULL);
 	gdk_threads_init();
 
 	gtk_init(&argc, &argv);
-	
-	if(!socket_init(NULL, 0)) {
-		GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
-			GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "FATAL ERROR!!\nCan not bind TCP/UDP port(2425), is it in use?");
+
+	if (!socket_init(NULL, 0)) {
+		GtkWidget *dialog =
+		    gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
+					   GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+					   "FATAL ERROR!!\n\nCan not bind TCP/UDP port(2425), is it in use?");
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
 		exit(EXIT_FAILURE);
 	}
-	
+
 	ipmsg_ui_init();
 	ipmsg_core_init();
-	
+
 	gtk_main();
-	
+
 	DEBUG_INFO("End");
 
 	exit(EXIT_SUCCESS);
 }
-

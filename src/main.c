@@ -20,18 +20,6 @@
 
 #include "common.h"
 
-init()
-{
-	if(!socket_init(pAddr, nPort))
-		return;
-	g_thread_create((GThreadFunc)udp_server_thread, NULL, FALSE, NULL);
-	g_thread_create((GThreadFunc)tcp_server_thread, NULL, FALSE, NULL);
-		
-	//tell everyone I am online.
-	ipmsg_send_br_entry();
-	bool ipmsg_core_init(const char *pAddr, int nPort);
-}
-
 int
 main(int argc, char *argv[]) {	
 	DEBUG_INFO("Start");
@@ -48,9 +36,19 @@ main(int argc, char *argv[]) {
 
 	gtk_init(&argc, &argv);
 	
+	if(!socket_init(NULL, 0)) {
+		GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
+			GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "FATAL ERROR!!\nCan not bind TCP/UDP port(2425), is it in use?");
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		exit(EXIT_FAILURE);
+	}
+	
 	ipmsg_ui_init();
-	ipmsg_core_init(NULL, 0);
+	ipmsg_core_init();
+	
 	gtk_main();
+	
 	DEBUG_INFO("End");
 
 	exit(EXIT_SUCCESS);

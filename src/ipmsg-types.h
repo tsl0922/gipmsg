@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -67,11 +67,6 @@ typedef struct {
 
 /* Message Definitions end  */
 
-typedef enum {
-	USER_STATE_ONLINE,
-	USER_STATE_OFFLINE
-} UserState;
-
 typedef struct {
 	ulong ipaddr;		/* ipaddress */
 	char *version;		/* client version */
@@ -83,7 +78,6 @@ typedef struct {
 	char *headIcon;		/* head icon file */
 	char *personalSign;	/* personal sign */
 	char *encode;		/* character encode */
-	UserState state;
 } User;
 
 typedef enum {
@@ -116,5 +110,23 @@ typedef struct {
 	ulong mtime;
 	ulong ctime;
 } FileInfo;
+
+typedef enum {
+	FILE_TS_NONE,		/* not in trans */
+	FILE_TS_READY,		/* ready for send/recv */
+	FILE_TS_DOING,		/* sending/recieving */
+	FILE_TS_FINISH		/* send/recv finish */
+} TransStatus;
+
+typedef struct {
+	FileInfo *info;				/* shared file info */
+	char fname[MAX_FNAME];		/* file current transer */
+	TransStatus tstatus;		/* transfer status */
+	ulong ssize;				/* size of file in transfer */
+	ulong tsize;				/* transfered size */
+	ulong speed;				/* bytes transfered per second */
+	ulong ntrans;						/* transferd file num */
+}ProgressInfo;
+
 
 #endif /*_IPMSG_TYPES_H_*/

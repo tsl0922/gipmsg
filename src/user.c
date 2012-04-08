@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -30,14 +30,13 @@ static void fill_user_info(Message * msg, User * user)
 	memset(user, 0, sizeof(User));
 
 	user->ipaddr = msg->fromAddr;
-	user->version = strdup(msg_get_version(msg));
-	user->nickName = strdup(msg_get_nickName(msg));
-	user->userName = strdup(msg_get_userName(msg));
-	user->hostName = strdup(msg_get_hostName(msg));
-	user->groupName = strdup(msg_get_groupName(msg));
-	user->headIcon = strdup(ICON_PATH "icon_linux.png");
-	user->encode = strdup(msg_get_encode(msg));
-	user->state = USER_STATE_ONLINE;
+	STRDUP_WITH_CHECK(user->version, msg_get_version(msg));
+	STRDUP_WITH_CHECK(user->nickName, msg_get_nickName(msg));
+	STRDUP_WITH_CHECK(user->userName, msg_get_userName(msg));
+	STRDUP_WITH_CHECK(user->hostName, msg_get_hostName(msg));
+	STRDUP_WITH_CHECK(user->groupName, msg_get_groupName(msg));
+	STRDUP_WITH_CHECK(user->headIcon, ICON_PATH "icon_linux.png");
+	STRDUP_WITH_CHECK(user->encode, msg_get_encode(msg));
 }
 
 User *create_user(Message * msg)
@@ -52,7 +51,28 @@ User *create_user(Message * msg)
 	return new_user;
 }
 
-void free_user(User * user)
+User *
+dup_user(User *src)
+{
+	User *new_user = NULL;
+	
+	if(!src)
+		return false;
+	new_user = (User *)malloc(sizeof(User));
+	memset(new_user, 0, sizeof(User));
+	new_user->ipaddr = src->ipaddr;
+	STRDUP_WITH_CHECK(new_user->version, src->version);
+	STRDUP_WITH_CHECK(new_user->nickName, src->nickName);
+	STRDUP_WITH_CHECK(new_user->userName, src->userName);
+	STRDUP_WITH_CHECK(new_user->hostName, src->hostName);
+	STRDUP_WITH_CHECK(new_user->groupName, src->groupName);
+	STRDUP_WITH_CHECK(new_user->headIcon, ICON_PATH "icon_linux.png");
+	STRDUP_WITH_CHECK(new_user->encode, src->encode);
+	
+	return new_user;
+}
+
+void free_user_data(User * user)
 {
 	if (user != NULL) {
 		FREE_WITH_CHECK(user->version);
@@ -65,7 +85,6 @@ void free_user(User * user)
 		FREE_WITH_CHECK(user->personalSign);
 		FREE_WITH_CHECK(user->encode);
 		user->ipaddr = 0;
-		free(user);
 	}
 }
 
@@ -74,7 +93,7 @@ void clear_user_list()
 	GList *entry;
 
 	g_static_mutex_lock(&user_list_mutex);
-	g_list_foreach(user_list, (GFunc) free_user, NULL);
+	g_list_foreach(user_list, (GFunc) free_user_data, NULL);
 	g_list_free(user_list);
 	user_list = NULL;
 	g_static_mutex_unlock(&user_list_mutex);
@@ -101,27 +120,23 @@ void print_user_list()
 	printf("-------   end   -------\n");
 }
 
-bool add_user(Message * msg)
+/* this function always return a no-null user as long as msg is not null */
+User *add_user(Message * msg)
 {
-	User *new_user;
-	bool rc = false;
+	User *tuser = NULL;
 
 	if (!msg)
-		return rc;
+		return NULL;
 
-	new_user = create_user(msg);
-	if (!find_user(msg->fromAddr)) {
+	tuser = find_user(msg->fromAddr);
+	if (!tuser) {
+		tuser = create_user(msg);
 		g_static_mutex_lock(&user_list_mutex);
-		user_list = g_list_append(user_list, new_user);
+		user_list = g_list_append(user_list, tuser);
 		g_static_mutex_unlock(&user_list_mutex);
-		users_tree_add_user(new_user);
-		rc = true;
-	} else {
-		free_user(new_user);
-		rc = false;
 	}
 
-	return rc;
+	return tuser;
 }
 
 static gint compare_by_ipaddr(gconstpointer a, gconstpointer b)
@@ -173,11 +188,9 @@ bool del_user(Message * msg)
 		rc = false;
 	} else {
 		user = entry->data;
-		users_tree_del_user(msg->fromAddr);
-//                      free_user(user);
-//                      user_list = g_list_remove_link(user_list, entry);
-//                      g_list_free(entry);
-		user->state = USER_STATE_OFFLINE;
+		free_user_data(user);
+		user_list = g_list_remove_link(user_list, entry);
+		g_list_free(entry);
 		rc = true;
 	}
 	g_static_mutex_unlock(&user_list_mutex);
@@ -185,29 +198,24 @@ bool del_user(Message * msg)
 	return rc;
 }
 
-bool update_user(Message * msg)
+User *update_user(Message * msg)
 {
 	GList *entry;
 	User tmp_user;
-	User *user;
-	bool rc = false;
+	User *user = NULL;
 
 	if (!user_list || !msg)
-		return rc;
+		return NULL;
 
 	memset(&tmp_user, 0, sizeof(User));
 	tmp_user.ipaddr = msg->fromAddr;
 	g_static_mutex_lock(&user_list_mutex);
 	entry = g_list_find_custom(user_list, &tmp_user, compare_by_ipaddr);
-	if (!entry) {
-		rc = false;
-	} else {
+	if (entry) {
 		user = entry->data;
 		fill_user_info(msg, user);
-		users_tree_update_user(user);
-		rc = true;
 	}
 	g_static_mutex_unlock(&user_list_mutex);
 
-	return rc;
+	return user;
 }

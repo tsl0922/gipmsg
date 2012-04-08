@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -152,11 +152,16 @@ void free_message_data(Message * msg)
 	}
 }
 
-Message *dup_message(Message * msg)
+Message *dup_message(Message * src)
 {
 	Message *new_msg = (Message *) malloc(sizeof(Message));
 	memset(new_msg, 0, sizeof(Message));
-	memcpy(new_msg, msg, sizeof(Message));
+	memcpy(new_msg, src, sizeof(Message));
+	STRDUP_WITH_CHECK(new_msg->version, src->version);
+	STRDUP_WITH_CHECK(new_msg->userName, src->userName);
+	STRDUP_WITH_CHECK(new_msg->hostName, src->hostName);
+	STRDUP_WITH_CHECK(new_msg->message, src->message);
+	STRDUP_WITH_CHECK(new_msg->attach, src->attach);
 
 	return new_msg;
 }

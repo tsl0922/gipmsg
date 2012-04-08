@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -35,11 +35,8 @@ struct _MainWindow {
 	GtkWidget *table;
 
 	GtkWidget *info_label;
-	GtkWidget *notebook;
-	GtkWidget *users_scrolledwindow;
-	GtkWidget *users_treeview;
-	GtkWidget *groups_scrolledwindow;
-	GtkWidget *groups_treeview;
+	GtkWidget *user_tree_scroll;
+	GtkWidget *user_tree;
 };
 
 typedef enum {
@@ -62,16 +59,16 @@ typedef struct {
 } SendEntry;
 
 struct _SendDlg {
-	User *user;
+	User *user;/* current user (must own a copy of user data from user list) */
 
 	GList *send_list;
 	GStaticMutex mutex;
 	gint timerId;
-	Message *msg;		/* the last recieved msg */
+	Message *msg;		/* the last recieved msg(must own a copy of recieved messge data) */
 	gchar *text;
 	gchar *fontName;
-	GtkWidget *emotionDlg;
-
+	gboolean is_show_recv_file;
+	
 	/* main widget begin */
 	GtkWidget *dialog;
 	GtkWidget *head_icon;	/* head icon */
@@ -95,12 +92,15 @@ struct _SendDlg {
 	GtkWidget *rb_label;
 	GtkWidget *photo_frame;
 	GtkWidget *recv_file_scroll;
-	GtkWidget *recv_progress_bar;
-	GtkWidget *send_file_scroll;
-	GtkWidget *send_progress_bar;
 	GtkWidget *recv_file_tree;	/* file to recieve */
+	GtkWidget *recv_progress_box;
+	GtkWidget *recv_progress_bar;
+	GtkWidget *recv_file_text;	/* current recv file name */
+	GtkWidget *send_file_scroll;
 	GtkWidget *send_file_tree;	/* file to send */
-	bool is_recv_file;
+	GtkWidget *send_progress_box;
+	GtkWidget *send_progress_bar;
+	GtkWidget *send_file_text;	/* current send file name */
 
 	/* toolbar begin */
 	GtkWidget *toolbar;
@@ -109,6 +109,8 @@ struct _SendDlg {
 	GtkWidget *send_image;
 	GtkWidget *send_file;
 	GtkWidget *send_folder;
+
+	GtkWidget *emotionDlg;
 };
 
 typedef struct {

@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -38,22 +38,21 @@ enum {
 };
 
 MainWindow main_win;
-static gint user_count = 0;
 
-static void init_users_tree();
-static void users_tree_add_group(GtkTreeModel * model,
+static void init_user_tree();
+static void user_tree_add_group(GtkTreeModel * model,
 				 GtkTreeIter * iter, gchar * groupName);
-static bool users_tree_get_group_iter(GtkTreeModel * model,
+static bool user_tree_get_group_iter(GtkTreeModel * model,
 				      GtkTreeIter * iter, gchar * groupName);
-static void users_tree_add_user0(GtkTreeModel * model,
+static void user_tree_add_user0(GtkTreeModel * model,
 				 GtkTreeIter * parent, User * user);
-static bool users_tree_find_user_in_group(GtkTreeModel * model,
+static bool user_tree_find_user_in_group(GtkTreeModel * model,
 					  GtkTreeIter * parent,
 					  GtkTreeIter * iter, ulong ipaddr);
-static GList *users_tree_get_child_users(GtkTreeModel * model,
+static GList *user_tree_get_child_users(GtkTreeModel * model,
 					 GtkTreeIter * parent);
-static GList *users_tree_get_selected_users();
-static bool is_groupName_valid(gchar * groupName);
+static GList *user_tree_get_selected_users();
+static bool is_group_name_valid(gchar * groupName);
 
 static gboolean
 on_window_delete(GtkWidget * widget, GdkEvent * event, gpointer data)
@@ -73,7 +72,7 @@ static void dialog_args_init(DialogArgs * args, User ** users, size_t len)
 	args->len = len;
 }
 
-static void ActiveDlg(SendDlg * dlg, bool active)
+void active_dlg(SendDlg * dlg, bool active)
 {
 	if (active) {
 		//gtk_window_deiconify(GTK_WINDOW(dlg->dialog));
@@ -83,7 +82,7 @@ static void ActiveDlg(SendDlg * dlg, bool active)
 	}
 }
 
-SendDlg *SendDlgOpen(User * user, bool * is_new)
+SendDlg *send_dlg_open(User * user, bool * is_new)
 {
 	GList *entry;
 	SendDlg *dlg;
@@ -113,7 +112,7 @@ static void on_statusicon_activate(GtkStatusIcon * statusicon, gpointer data)
 		gtk_status_icon_set_blinking(statusicon, FALSE);
 		gtk_status_icon_set_tooltip(statusicon, GIPMSG_VERSION);
 		gtk_status_icon_set_from_file(statusicon, ICON_PATH "icon.png");
-		ActiveDlg(main_win.dlg, true);
+		active_dlg(main_win.dlg, true);
 		return;
 	}
 	if (gtk_widget_get_visible(main_win.window)) {
@@ -123,9 +122,7 @@ static void on_statusicon_activate(GtkStatusIcon * statusicon, gpointer data)
 	}
 }
 
-typedef void *(*MenuCallBackFunc) (GtkWidget * item, gpointer data);
-
-static GtkWidget *create_menu_item(const char *name, const char *iconpath,
+GtkWidget *create_menu_item(const char *name, const char *iconpath,
 				   GtkWidget * parent, gboolean sensitive,
 				   MenuCallBackFunc func, gpointer data)
 {
@@ -169,7 +166,7 @@ statusicon_popup_menu(GtkStatusIcon * statusicon, guint button,
 }
 
 static gboolean
-users_tree_select_func(GtkTreeSelection * selection,
+user_tree_select_func(GtkTreeSelection * selection,
 		       GtkTreeModel * model,
 		       GtkTreePath * path,
 		       gboolean path_currently_selected, gpointer data)
@@ -192,13 +189,13 @@ static void on_menu_send_message(GtkMenuItem * menu_item, gpointer data)
 
 static void on_menu_refresh(GtkMenuItem * menu_item, gpointer data)
 {
-	clear_users_tree();
+	clear_user_tree();
 	clear_user_list();
-	users_tree_create_default_group();
 	ipmsg_send_br_entry();
 }
 
-static gboolean UserstreePopupMenu(GtkWidget * treeview, GdkEventButton * event)
+/* right mouse button click event */
+static gboolean on_user_tree_menu_popup(GtkWidget * treeview, GdkEventButton * event)
 {
 	GtkTreeModel *model;
 	GtkTreePath *path;
@@ -213,8 +210,8 @@ static gboolean UserstreePopupMenu(GtkWidget * treeview, GdkEventButton * event)
 					      (gint) (event->y), &path, NULL,
 					      NULL, NULL))
 		return FALSE;
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.users_treeview));
-	gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(main_win.users_treeview),
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
+	gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview),
 				      (gint) event->x, (gint) event->y, &path,
 				      NULL, NULL, NULL);
 
@@ -223,7 +220,6 @@ static gboolean UserstreePopupMenu(GtkWidget * treeview, GdkEventButton * event)
 	if (!gtk_tree_model_get_iter(GTK_TREE_MODEL(model), &iter, path))
 		return FALSE;
 	gtk_tree_model_get(model, &iter, TYPE_COLUMN, &type, -1);
-	DEBUG_INFO("type: %d", type);
 
 	switch (type) {
 	case COL_TYPE_USER:
@@ -231,7 +227,7 @@ static gboolean UserstreePopupMenu(GtkWidget * treeview, GdkEventButton * event)
 			if (gtk_tree_selection_path_is_selected
 			    (gtk_tree_view_get_selection
 			     (GTK_TREE_VIEW(treeview)), path)) {
-				users = users_tree_get_selected_users();
+				users = user_tree_get_selected_users();
 			} else {
 				User *tuser;
 				gtk_tree_model_get(model, &iter,
@@ -242,7 +238,7 @@ static gboolean UserstreePopupMenu(GtkWidget * treeview, GdkEventButton * event)
 		}
 	case COL_TYPE_GROUP:
 		{
-			users = users_tree_get_child_users(model, &iter);
+			users = user_tree_get_child_users(model, &iter);
 			break;
 		}
 	}
@@ -260,8 +256,9 @@ static gboolean UserstreePopupMenu(GtkWidget * treeview, GdkEventButton * event)
 	return TRUE;
 }
 
+/* expender mouse click event */
 static gboolean
-UserstreeChangeStatus(GtkWidget * treeview, GdkEventButton * event)
+on_user_tree_change_status(GtkWidget * treeview, GdkEventButton * event)
 {
 	GtkTreeModel *model;
 	GtkCellRenderer *cell;
@@ -304,8 +301,9 @@ UserstreeChangeStatus(GtkWidget * treeview, GdkEventButton * event)
 
 }
 
+/* double mouse cilck event */
 static void
-UserstreeItemActivited(GtkTreeView * treeview,
+on_user_tree_item_activited(GtkTreeView * treeview,
 		       GtkTreePath * path,
 		       GtkTreeViewColumn * column, gpointer data)
 {
@@ -326,9 +324,8 @@ UserstreeItemActivited(GtkTreeView * treeview,
 
 			gtk_tree_model_get(model, &iter,
 					   DATA_COLUMN, &tuser, -1);
-			SendDlg *dlg = SendDlgOpen(tuser, &is_new);
-			if (is_new)
-				ActiveDlg(dlg, true);
+			SendDlg *dlg = send_dlg_open(tuser, &is_new);
+			active_dlg(dlg, true);
 			break;
 		}
 	case COL_TYPE_GROUP:
@@ -379,43 +376,43 @@ static void create_all_widget()
 	gtk_table_attach(GTK_TABLE(main_win.table), main_win.info_label, 0, 1,
 			 0, 1, GTK_EXPAND | GTK_FILL, 0, 0, 0);
 
-	main_win.users_scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
+	main_win.user_tree_scroll = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW
-				       (main_win.users_scrolledwindow),
+				       (main_win.user_tree_scroll),
 				       GTK_POLICY_AUTOMATIC,
 				       GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW
-					    (main_win.users_scrolledwindow),
+					    (main_win.user_tree_scroll),
 					    GTK_SHADOW_IN);
-	main_win.users_treeview = gtk_tree_view_new();
-	gtk_container_add(GTK_CONTAINER(main_win.users_scrolledwindow),
-			  main_win.users_treeview);
-	//gtk_tree_view_set_reorderable(GTK_TREE_VIEW(main_win.users_treeview), TRUE);
+	main_win.user_tree = gtk_tree_view_new();
+	gtk_container_add(GTK_CONTAINER(main_win.user_tree_scroll),
+			  main_win.user_tree);
+	//gtk_tree_view_set_reorderable(GTK_TREE_VIEW(main_win.user_tree), TRUE);
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW
-					  (main_win.users_treeview), FALSE);
+					  (main_win.user_tree), FALSE);
 	gtk_tree_selection_set_mode(gtk_tree_view_get_selection
-				    (GTK_TREE_VIEW(main_win.users_treeview)),
+				    (GTK_TREE_VIEW(main_win.user_tree)),
 				    GTK_SELECTION_MULTIPLE);
 	gtk_tree_selection_set_select_function(gtk_tree_view_get_selection
 					       (GTK_TREE_VIEW
-						(main_win.users_treeview)),
+						(main_win.user_tree)),
 					       (GtkTreeSelectionFunc)
-					       users_tree_select_func, NULL,
+					       user_tree_select_func, NULL,
 					       NULL);
 	gtk_tree_view_set_enable_tree_lines(GTK_TREE_VIEW
-					    (main_win.users_treeview), FALSE);
-	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(main_win.users_treeview),
+					    (main_win.user_tree), FALSE);
+	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(main_win.user_tree),
 					 FALSE);
 
-	g_signal_connect(main_win.users_treeview, "row-activated",
-			 G_CALLBACK(UserstreeItemActivited), NULL);
-	g_signal_connect(main_win.users_treeview, "button-press-event",
-			 G_CALLBACK(UserstreePopupMenu), NULL);
-	g_signal_connect(main_win.users_treeview, "button-release-event",
-			 G_CALLBACK(UserstreeChangeStatus), NULL);
+	g_signal_connect(main_win.user_tree, "row-activated",
+			 G_CALLBACK(on_user_tree_item_activited), NULL);
+	g_signal_connect(main_win.user_tree, "button-press-event",
+			 G_CALLBACK(on_user_tree_menu_popup), NULL);
+	g_signal_connect(main_win.user_tree, "button-release-event",
+			 G_CALLBACK(on_user_tree_change_status), NULL);
 
 	gtk_table_attach(GTK_TABLE(main_win.table),
-			 main_win.users_scrolledwindow, 0, 1, 1, 2,
+			 main_win.user_tree_scroll, 0, 1, 1, 2,
 			 GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
 
 	GdkScreen *screen;
@@ -433,11 +430,10 @@ void ipmsg_ui_init()
 	DEBUG_INFO("Initialize ui...");
 
 	create_all_widget();
-	init_users_tree();
-	users_tree_create_default_group();
+	init_user_tree();
 }
 
-static void init_users_tree()
+static void init_user_tree()
 {
 	GtkTreeStore *store;
 	GtkTreeViewColumn *column;
@@ -446,12 +442,12 @@ static void init_users_tree()
 	store = gtk_tree_store_new(N_COLUMNS, GDK_TYPE_PIXBUF,
 				   GDK_TYPE_PIXBUF, G_TYPE_STRING,
 				   G_TYPE_POINTER, G_TYPE_INT);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(main_win.users_treeview),
+	gtk_tree_view_set_model(GTK_TREE_VIEW(main_win.user_tree),
 				GTK_TREE_MODEL(store));
 	g_object_unref(store);
 
 	column = gtk_tree_view_column_new();
-	gtk_tree_view_append_column(GTK_TREE_VIEW(main_win.users_treeview),
+	gtk_tree_view_append_column(GTK_TREE_VIEW(main_win.user_tree),
 				    column);
 	//expander
 	renderer = gtk_cell_renderer_pixbuf_new();
@@ -470,18 +466,8 @@ static void init_users_tree()
 					    INFO_COLUMN, NULL);
 }
 
-void users_tree_create_default_group()
-{
-	GtkTreeModel *model;
-	GtkTreeIter iter1, iter2;
-
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.users_treeview));
-	users_tree_add_group(model, &iter1, GROUP_MYSELF);
-	users_tree_add_group(model, &iter2, GROUP_FRIEND);
-}
-
 static void
-users_tree_add_group(GtkTreeModel * model,
+user_tree_add_group(GtkTreeModel * model,
 		     GtkTreeIter * iter, gchar * groupName)
 {
 	GdkPixbuf *cpixbuf, *opixbuf;
@@ -497,6 +483,7 @@ users_tree_add_group(GtkTreeModel * model,
 			   INFO_COLUMN, groupName,
 			   DATA_COLUMN, (gpointer) NULL,
 			   TYPE_COLUMN, COL_TYPE_GROUP, -1);
+	
 	if (cpixbuf)
 		g_object_unref(G_OBJECT(cpixbuf));
 	if (opixbuf)
@@ -504,7 +491,7 @@ users_tree_add_group(GtkTreeModel * model,
 }
 
 static bool
-users_tree_get_group_iter(GtkTreeModel * model,
+user_tree_get_group_iter(GtkTreeModel * model,
 			  GtkTreeIter * iter, gchar * groupName)
 {
 	gint type;
@@ -527,7 +514,7 @@ users_tree_get_group_iter(GtkTreeModel * model,
 }
 
 static void
-users_tree_add_user0(GtkTreeModel * model, GtkTreeIter * parent, User * user)
+user_tree_add_user0(GtkTreeModel * model, GtkTreeIter * parent, User * user)
 {
 	GtkTreeIter iter;
 	GdkPixbuf *cpixbuf, *opixbuf;
@@ -541,7 +528,7 @@ users_tree_add_user0(GtkTreeModel * model, GtkTreeIter * parent, User * user)
 	    g_strdup_printf("%s(%s)\n%s", user->nickName, user->hostName,
 			    addr_str);
 	FREE_WITH_CHECK(addr_str);
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.users_treeview));
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.user_tree));
 	gtk_tree_store_append(GTK_TREE_STORE(model), &iter, parent);
 	gtk_tree_store_set(GTK_TREE_STORE(model), &iter,
 			   EXPANDER_CLOSED, cpixbuf,
@@ -557,35 +544,40 @@ users_tree_add_user0(GtkTreeModel * model, GtkTreeIter * parent, User * user)
 		g_free(info);
 }
 
-void users_tree_add_user(User * user)
+void user_tree_add_user(User * user)
 {
 	GtkTreeModel *model;
-	GtkTreeIter iter;	//parent iter
+	GtkTreeIter iter;
 
 	DEBUG_INFO("---------");
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.users_treeview));
-	if (is_sys_host_addr(user->ipaddr)) {
-		GtkTreeIter iter1;
-		users_tree_get_group_iter(model, &iter1, GROUP_MYSELF);
-		users_tree_add_user0(model, &iter1, user);
-	} else {
-		if (is_groupName_valid(user->groupName)) {
-			//add user to it's group
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.user_tree));
+	if (is_sys_host_addr(user->ipaddr)) {/* myself */
+		/* add to Myself group */
+		if(!user_tree_get_group_iter(model, &iter, GROUP_MYSELF)) {
+			user_tree_add_group(model, &iter, GROUP_MYSELF);
+		}
+		user_tree_add_user0(model, &iter, user);
+	} else {/* peer */
+		/* add to My Friend group */
+		if(!user_tree_get_group_iter(model, &iter, GROUP_FRIEND)) {
+			user_tree_add_group(model, &iter, GROUP_FRIEND);
+		}
+		user_tree_add_user0(model, &iter, user);
+		/* add to it's  */
+		if (is_group_name_valid(user->groupName)) {
+			/* add user to it's own group */
 			GtkTreeIter iter2;
-			if (!users_tree_get_group_iter
+			if (!user_tree_get_group_iter
 			    (model, &iter2, user->groupName)) {
-				users_tree_add_group(model, &iter2,
+				user_tree_add_group(model, &iter2,
 						     user->groupName);
-				users_tree_add_user0(model, &iter2, user);
+				user_tree_add_user0(model, &iter2, user);
 			}
 		}
 	}
-	users_tree_get_group_iter(model, &iter, GROUP_FRIEND);
-	users_tree_add_user0(model, &iter, user);
-	++user_count;
 }
 
-void users_tree_del_user(ulong ipaddr)
+void user_tree_del_user(ulong ipaddr)
 {
 	GtkTreeModel *model;
 	GtkTreeIter iter, pos;
@@ -594,7 +586,7 @@ void users_tree_del_user(ulong ipaddr)
 	gchar *groupName = NULL;
 
 	DEBUG_INFO("---------");
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.users_treeview));
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.user_tree));
 	if (gtk_tree_model_get_iter_first(model, &iter)) {
 		do {
 			if (gtk_tree_model_iter_children(model, &pos, &iter)) {
@@ -620,9 +612,9 @@ void users_tree_del_user(ulong ipaddr)
 			}
 		} while (gtk_tree_model_iter_next(model, &iter));
 	}
-	//remove empty group
-	if (is_groupName_valid(groupName)) {
-		if (users_tree_get_group_iter(model, &iter, groupName)) {
+	/* remove empty user group */
+	if (is_group_name_valid(groupName)) {
+		if (user_tree_get_group_iter(model, &iter, groupName)) {
 			if (!gtk_tree_model_iter_has_child(model, &iter)) {
 				gtk_tree_store_remove(GTK_TREE_STORE(model),
 						      &iter);
@@ -630,11 +622,17 @@ void users_tree_del_user(ulong ipaddr)
 		}
 		g_free(groupName);
 	}
-	--user_count;
+	/* check system group */
+	if (user_tree_get_group_iter(model, &iter, GROUP_FRIEND)) {
+		if (!gtk_tree_model_iter_has_child(model, &iter)) {
+			gtk_tree_store_remove(GTK_TREE_STORE(model),
+						      &iter);
+		}
+	}
 }
 
 static void
-users_tree_update_user0(GtkTreeModel * model, GtkTreeIter * iter, User * user)
+user_tree_update_user0(GtkTreeModel * model, GtkTreeIter * iter, User * user)
 {
 	GdkPixbuf *cpixbuf, *opixbuf;
 	gchar *info;
@@ -662,7 +660,7 @@ users_tree_update_user0(GtkTreeModel * model, GtkTreeIter * iter, User * user)
 		g_free(info);
 }
 
-void users_tree_update_user(User * user)
+void user_tree_update_user(User * user)
 {
 	GtkTreeModel *model;
 	GtkTreeIter iter, pos;
@@ -671,7 +669,7 @@ void users_tree_update_user(User * user)
 	gchar *groupName = NULL;
 
 	DEBUG_INFO("---------");
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.users_treeview));
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.user_tree));
 	if (gtk_tree_model_get_iter_first(model, &iter)) {
 		do {
 			if (gtk_tree_model_iter_children(model, &pos, &iter)) {
@@ -685,7 +683,7 @@ void users_tree_update_user(User * user)
 								   &tuser, -1);
 						if (tuser->ipaddr ==
 						    user->ipaddr) {
-							users_tree_update_user0
+							user_tree_update_user0
 							    (model, &pos, user);
 							groupName =
 							    g_strdup(tuser->
@@ -700,10 +698,10 @@ void users_tree_update_user(User * user)
 	//update group
 	DEBUG_INFO("old groupName: %s", groupName);
 	//check old groupName
-	if (is_groupName_valid(groupName)) {
-		if (users_tree_get_group_iter(model, &iter, groupName)) {
+	if (is_group_name_valid(groupName)) {
+		if (user_tree_get_group_iter(model, &iter, groupName)) {
 			if (strcmp(groupName, user->groupName)) {
-				if (users_tree_find_user_in_group
+				if (user_tree_find_user_in_group
 				    (model, &iter, &pos, user->ipaddr)) {
 					gtk_tree_store_remove(GTK_TREE_STORE
 							      (model), &pos);
@@ -718,24 +716,24 @@ void users_tree_update_user(User * user)
 	}
 	DEBUG_INFO("new groupName: %s", user->groupName);
 	//check new groupName
-	if (is_groupName_valid(user->groupName)
+	if (is_group_name_valid(user->groupName)
 	    && !is_sys_host_addr(user->ipaddr)) {
-		if (!users_tree_get_group_iter(model, &iter, user->groupName)) {
-			users_tree_add_group(model, &iter, user->groupName);
-			users_tree_add_user0(model, &iter, user);
+		if (!user_tree_get_group_iter(model, &iter, user->groupName)) {
+			user_tree_add_group(model, &iter, user->groupName);
+			user_tree_add_user0(model, &iter, user);
 		} else {
-			if (users_tree_find_user_in_group
+			if (user_tree_find_user_in_group
 			    (model, &iter, &pos, user->ipaddr)) {
-				users_tree_update_user0(model, &pos, user);
+				user_tree_update_user0(model, &pos, user);
 			} else {
-				users_tree_add_user0(model, &pos, user);
+				user_tree_add_user0(model, &pos, user);
 			}
 		}
 	}
 }
 
 static bool
-users_tree_find_user_in_group(GtkTreeModel * model,
+user_tree_find_user_in_group(GtkTreeModel * model,
 			      GtkTreeIter * parent,
 			      GtkTreeIter * iter, ulong ipaddr)
 {
@@ -758,7 +756,34 @@ users_tree_find_user_in_group(GtkTreeModel * model,
 	return false;
 }
 
-static GList *users_tree_get_child_users(GtkTreeModel * model,
+static bool
+user_tree_get_has_user(ulong ipaddr)
+{
+	GtkTreeModel * model;
+	GtkTreeIter iter;
+	gint type;
+	gchar *info;
+	
+	if (gtk_tree_model_get_iter_first(model, &iter)) {
+		do {
+			gtk_tree_model_get(model, &iter,
+				TYPE_COLUMN, &type,
+				INFO_COLUMN, &info, -1);
+			if (type == COL_TYPE_GROUP &&
+				(!strcmp(info, GROUP_FRIEND) ||
+				!strcmp(info, GROUP_MYSELF))) {
+				GtkTreeIter iter1;
+				if(user_tree_find_user_in_group(model, &iter, &iter1, ipaddr)) {
+					return true;
+				}
+			}
+		} while (gtk_tree_model_iter_next(model, &iter));
+	}
+
+	return false;
+}
+
+static GList *user_tree_get_child_users(GtkTreeModel * model,
 					 GtkTreeIter * parent)
 {
 	GtkTreeIter iter;
@@ -781,7 +806,7 @@ static GList *users_tree_get_child_users(GtkTreeModel * model,
 	return users;
 }
 
-static GList *users_tree_get_selected_users()
+static GList *user_tree_get_selected_users()
 {
 	GtkTreeModel *model;
 	GtkTreeSelection *selection;
@@ -791,9 +816,9 @@ static GList *users_tree_get_selected_users()
 	GList *users = NULL;
 	User *user = NULL;
 
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.users_treeview));
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.user_tree));
 	selection =
-	    gtk_tree_view_get_selection(GTK_TREE_VIEW(main_win.users_treeview));
+	    gtk_tree_view_get_selection(GTK_TREE_VIEW(main_win.user_tree));
 	slist = gtk_tree_selection_get_selected_rows(selection, NULL);
 	while (slist) {
 		path = (GtkTreePath *) slist->data;
@@ -803,7 +828,7 @@ static GList *users_tree_get_selected_users()
 			users = g_list_append(users, user);
 		}
 		slist = slist->next;
-	};
+	}
 
 	g_list_foreach(slist, (GFunc) gtk_tree_path_free, NULL);
 	g_list_free(slist);
@@ -811,14 +836,14 @@ static GList *users_tree_get_selected_users()
 	return users;
 }
 
-void clear_users_tree()
+void clear_user_tree()
 {
 	gtk_tree_store_clear(GTK_TREE_STORE
 			     (gtk_tree_view_get_model
-			      (GTK_TREE_VIEW(main_win.users_treeview))));
+			      (GTK_TREE_VIEW(main_win.user_tree))));
 }
 
-static bool is_groupName_valid(gchar * groupName)
+static bool is_group_name_valid(gchar * groupName)
 {
 	if (groupName && strlen(groupName)
 	    && strcmp(groupName, IPMSG_UNKNOWN_NAME))
@@ -856,7 +881,7 @@ void notify_sendmsg(Message * msg)
 	main_win.user = find_user(msg->fromAddr);
 	if (!main_win.user)
 		return;
-	main_win.dlg = SendDlgOpen(main_win.user, &is_new);
+	main_win.dlg = send_dlg_open(main_win.user, &is_new);
 	if (!is_new && is_same_packet(main_win.dlg, msg))
 		return;
 	main_win.dlg->msg = dup_message(msg);
@@ -870,7 +895,6 @@ void notify_sendmsg(Message * msg)
 		char buf[MAX_BUF];
 		char time[MAX_NAMEBUF];
 
-		gtk_widget_hide(main_win.dlg->dialog);
 		strftime(time, sizeof(time), "%F %T", get_currenttime());
 		sprintf(buf, "<b>New Message\n</b>%s(%s %s@%s) %s",
 			main_win.user->nickName, main_win.user->groupName,

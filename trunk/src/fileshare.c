@@ -169,7 +169,7 @@ bool validate_request(RequestInfo * request, FileInfo ** info_p)
 
 	while (entry) {
 		file = (FileInfo *) entry->data;
-		if ((file->id = request->file_id)
+		if ((file->id == request->file_id)
 		    && (file->packet_no == request->packet_no)) {
 			*info_p = file;
 			ret = true;

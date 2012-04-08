@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -197,6 +197,20 @@ void build_path(char *path, const char *base, const char *name)
 	strcpy(path, tpath);
 }
 
+void
+cut_string(char *new_str, const char *old_str, int new_len)
+{
+	if(strlen(old_str) <= new_len) {
+		strcpy(new_str, old_str);
+	}
+	else {
+		strncpy(new_str, old_str, new_len);
+		*(new_str + new_len -1) = '.';
+		*(new_str + new_len -2) = '.';
+		*(new_str + new_len -3) = '.';
+	}
+}
+
 struct tm *get_currenttime()
 {
 	time_t t;
@@ -231,7 +245,7 @@ char *seprate_token(const char *buf, char seprator, char **handle)
 	if (*handle != NULL)
 		sp = *handle;
 	else
-		sp = buf;
+		sp = (char *)buf;
 	ep = strchr(sp, seprator);
 	if (!ep) {
 		*handle = NULL;

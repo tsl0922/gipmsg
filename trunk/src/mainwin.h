@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -22,11 +22,17 @@
 #define __GIPMSG_MAINWIN_H__
 
 void ipmsg_ui_init();
-void users_tree_create_default_group();
-void users_tree_add_user(User * user);
-void users_tree_del_user(ulong ipaddr);
-void users_tree_update_user(User * user);
-void clear_users_tree();
+SendDlg *send_dlg_open(User * user, bool * is_new);
+void active_dlg(SendDlg * dlg, bool active);
+void user_tree_add_user(User * user);
+void user_tree_del_user(ulong ipaddr);
+void user_tree_update_user(User * user);
+void clear_user_tree();
 void notify_sendmsg(Message * msg);
+
+typedef void *(*MenuCallBackFunc) (GtkWidget * item, gpointer data);
+GtkWidget *create_menu_item(const char *name, const char *iconpath,
+				   GtkWidget * parent, gboolean sensitive,
+				   MenuCallBackFunc func, gpointer data);
 
 #endif

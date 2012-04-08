@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -25,9 +25,9 @@ static int file_id = 0;
 static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 
 typedef struct {
+	SendDlg *dlg;
 	FileInfo *info;
 	char path[MAX_PATH];
-	User *user;
 } RecvThreadArgs;
 
 typedef struct {
@@ -48,6 +48,25 @@ typedef struct {
 	command_no_t attr;
 } DirHeader;
 
+typedef struct {
+	int sock;
+	int fd;
+	char fname[MAX_FNAME];
+	ulong size;
+	FileInfo *info;
+	ulong *pnfilesrecv;
+	SendDlg *dlg;
+} RecvDataEntry;
+
+typedef struct {
+	SOCKET sock;
+	char path[MAX_PATH];
+	char fname[MAX_FNAME];
+	FileInfo *info;
+	ulong *pnfilesend;
+	SendDlg *dlg;
+} SendDataEntry;
+
 static gpointer recv_file_thread(gpointer data);
 static gpointer send_file_thread(gpointer data);
 
@@ -56,7 +75,6 @@ bool setup_file_info(FileInfo * info, const char *path)
 	struct stat statbuf;
 	char *sp;
 
-	DEBUG_INFO("setup file info: %s", path);
 	if (stat(path, &statbuf) == -1)
 		return false;
 	info->id = ++file_id;
@@ -74,8 +92,44 @@ bool setup_file_info(FileInfo * info, const char *path)
 
 	info->attr =
 	    S_ISDIR(statbuf.st_mode) ? IPMSG_FILE_DIR : IPMSG_FILE_REGULAR;
-
+	
 	return true;
+}
+
+static void setup_progress_info(ProgressInfo *ppinfo, FileInfo *info, 
+	const char *fname, TransStatus tstatus, ulong ssize, ulong tsize,
+	ulong speed, ulong ntrans)
+{
+	ppinfo->info = info;
+	strcpy(ppinfo->fname, fname);
+	ppinfo->tstatus = tstatus;
+	ppinfo->ssize = ssize;
+	ppinfo->tsize = tsize;
+	ppinfo->speed = speed;
+	ppinfo->ntrans = ntrans;
+}
+
+static void setup_recv_data_entry(RecvDataEntry *entry, int sock, int fd, 
+	char *fname, ulong size, FileInfo *info, ulong *pnfilesrecv,	SendDlg *dlg)
+{
+	entry->sock = sock;
+	entry->fd = fd;
+	strcpy(entry->fname, fname);
+	entry->size = size;
+	entry->info = info;
+	entry->pnfilesrecv = pnfilesrecv;
+	entry->dlg= dlg;
+}
+
+static void setup_send_data_entry(SendDataEntry *entry, SOCKET sock,
+	char *path, char *fname, FileInfo *info, ulong *pnfilesend, SendDlg *dlg)
+{
+	entry->sock = sock;
+	strcpy(entry->path, path);
+	strcpy(entry->fname, fname);
+	entry->info = info;
+	entry->pnfilesend = pnfilesend;
+	entry->dlg = dlg;
 }
 
 void add_file(FileInfo * info)
@@ -115,8 +169,8 @@ bool validate_request(RequestInfo * request, FileInfo ** info_p)
 
 	while (entry) {
 		file = (FileInfo *) entry->data;
-		if (file->id = request->file_id
-		    && file->packet_no == request->packet_no) {
+		if ((file->id = request->file_id)
+		    && (file->packet_no == request->packet_no)) {
 			*info_p = file;
 			ret = true;
 			break;
@@ -285,45 +339,66 @@ static bool send_request(SOCKET sock, FileInfo * info, User * user)
  * @param size data length max recieve.
  * @return length of recieved data
  */
-static ulong recv_file_data(int sock, int fd, ulong size)
+static ulong recv_file_data(RecvDataEntry *entry)
 {
-	ulong max_n_recv = size;
+	ulong max_n_recv = entry->size;
 	ulong total_n_recv = 0;
 	size_t n_recv = 0;
 	size_t n_write = 0;
 	char buf[MAX_TCPBUF];
-
+	struct timeval tv1, tv2;
+	ulong speed = 0;
+	ProgressInfo pinfo;
+	
 	/* recieve data */
 	while (max_n_recv) {
 		memset(buf, 0, MAX_TCPBUF);
-		n_recv = xrecv(sock, buf, MIN(max_n_recv, MAX_TCPBUF), 0);
+		GET_CLOCK_COUNT(&tv1);
+		n_recv = xrecv(entry->sock, buf, MIN(max_n_recv, MAX_TCPBUF), 0);
 		if (n_recv <= 0)
 			break;
-		n_write = xwrite(fd, buf, n_recv);
+		n_write = xwrite(entry->fd, buf, n_recv);
 		if (n_write == -1)
 			break;
+		GET_CLOCK_COUNT(&tv2);
+		speed = total_n_recv/difftimeval(tv2,tv1);
+		setup_progress_info(&pinfo, entry->info, entry->fname, FILE_TS_DOING,
+			entry->size, total_n_recv, speed, *(entry->pnfilesrecv));
+		gdk_threads_enter();
+		update_recv_progress_bar(entry->dlg, &pinfo);
+		gdk_threads_leave();
 		max_n_recv -= n_recv;
 		total_n_recv += n_recv;
 	}
-
+	(*(entry->pnfilesrecv))++;
+	
 	return total_n_recv;
 }
 
-static ulong recv_regular_file(FileInfo * info, const char *path, User * user)
+static ulong recv_regular_file(FileInfo * info, const char *path, SendDlg *dlg)
 {
 	SOCKET sock;
 	int fd;
 	ulong total_n_recv = 0;
+	static ulong nfilerecv = 0;
+	struct timeval tv1, tv2;
+	ulong speed = 0;
+	ProgressInfo pinfo;
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		DEBUG_ERROR("can not create socket!");
 		return -1;
 	}
-	if (!send_request(sock, info, user)) {
+	if (!send_request(sock, info, dlg->user)) {
 		DEBUG_ERROR("send_request error!");
 		CLOSE(sock);
 		return -1;
 	}
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_READY,
+		info->size, 0, 0, 0);
+	gdk_threads_enter();
+	update_recv_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
 
 	/* create file */
 	DEBUG_INFO("save file: %s", path);
@@ -331,14 +406,24 @@ static ulong recv_regular_file(FileInfo * info, const char *path, User * user)
 		DEBUG_ERROR("open error!");
 		return -1;
 	}
-
+	RecvDataEntry entry;
+	setup_recv_data_entry(&entry, sock, fd, info->name, info->size - info->offset,
+		info, &nfilerecv, dlg);
 	/* recieve file data */
-	total_n_recv = recv_file_data(sock, fd, info->size - info->offset);
+	GET_CLOCK_COUNT(&tv1);
+	total_n_recv = recv_file_data(&entry);
+	GET_CLOCK_COUNT(&tv2);
 	close(fd);
 	CLOSE(sock);
 
 	DEBUG_INFO("total recv size: %ld", total_n_recv);
-
+	speed = total_n_recv/difftimeval(tv2,tv1);
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH,
+		info->size, total_n_recv, speed, nfilerecv);
+	gdk_threads_enter();
+	update_recv_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
+	
 	return total_n_recv;
 }
 
@@ -395,7 +480,7 @@ static bool recv_dir_header(SOCKET sock, const char *buf)
 	return true;
 }
 
-static ulong recv_dir_file(FileInfo * info, const char *path, User * user)
+static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 {
 	SOCKET sock;
 	int fd;
@@ -406,19 +491,29 @@ static ulong recv_dir_file(FileInfo * info, const char *path, User * user)
 	char tpath[MAX_PATH];
 	char file_path[MAX_PATH];
 	bool is_end = false;
-
+	static ulong nfilerecv = 0;
+	struct timeval tv1, tv2;
+	ulong speed = 0;
+	ProgressInfo pinfo;
+	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		DEBUG_ERROR("can not create socket!\n");
 		return;
 	}
-	if (!send_request(sock, info, user)) {
+	if (!send_request(sock, info, dlg->user)) {
 		DEBUG_ERROR("send_request error!");
 		CLOSE(sock);
 		return -1;
 	}
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_READY,
+		info->size, 0, 0, 0);
+	gdk_threads_enter();
+	update_recv_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
 
 	build_path(tpath, path, ".");
 	memset(buf, 0, MAX_TCPBUF);
+	GET_CLOCK_COUNT(&tv1);
 	while (!is_end) {
 		//recieve dir header
 		memset(buf, 0, MAX_TCPBUF);
@@ -461,8 +556,11 @@ static ulong recv_dir_file(FileInfo * info, const char *path, User * user)
 					is_end = true;
 					break;
 				}
+				RecvDataEntry entry;
+				setup_recv_data_entry(&entry, sock, fd, header.name, header.size,
+					info, &nfilerecv, dlg);
 				// recieve file data
-				n_recv = recv_file_data(sock, fd, header.size);
+				n_recv = recv_file_data(&entry);
 				total_n_recv += n_recv;
 				close(fd);
 				continue;
@@ -471,10 +569,16 @@ static ulong recv_dir_file(FileInfo * info, const char *path, User * user)
 			break;
 		}
 	}
-
+	GET_CLOCK_COUNT(&tv2);
 	CLOSE(sock);
 	DEBUG_INFO("total recv size: %ld", total_n_recv);
-
+	speed = total_n_recv/difftimeval(tv2,tv1);
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH, info->size,
+		total_n_recv, speed, nfilerecv);
+	gdk_threads_enter();
+	update_recv_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
+	
 	return total_n_recv;
 }
 
@@ -509,7 +613,7 @@ static bool parse_request(const char *extend, RequestInfo * request)
 	return true;
 }
 
-static ulong send_file_data(SOCKET sock, const char *path)
+static ulong send_file_data(SendDataEntry *entry)
 {
 	int fd;
 	struct stat statbuf;
@@ -518,42 +622,74 @@ static ulong send_file_data(SOCKET sock, const char *path)
 	ulong total_n_send = 0;
 	size_t n_send = 0;
 	size_t n_read = 0;
+	struct timeval tv1, tv2;
+	ulong speed = 0;
+	ProgressInfo pinfo;
 
-	DEBUG_INFO("sending file: %s", path);
-	stat(path, &statbuf);
+	DEBUG_INFO("sending file: %s", entry->path);
+	stat(entry->path, &statbuf);
 	max_n_read = statbuf.st_size;
 	/* open file */
-	if ((fd = open(path, O_RDONLY)) < 0) {
+	if ((fd = open(entry->path, O_RDONLY)) < 0) {
 		DEBUG_ERROR("open error!");
 		return 0;
 	}
 	/* send file */
 	while (max_n_read) {
 		memset(buf, 0, MAX_TCPBUF);
+		GET_CLOCK_COUNT(&tv1);
 		n_read = xread(fd, buf, MIN(max_n_read, MAX_TCPBUF));
 		if (n_read <= 0)
 			break;
-		n_send = xsend(sock, buf, n_read, 0);
+		n_send = xsend(entry->sock, buf, n_read, 0);
 		if (n_send == -1)
 			break;
+		GET_CLOCK_COUNT(&tv2);
 		max_n_read -= n_read;
 		total_n_send += n_send;
+		speed = total_n_send/difftimeval(tv2,tv1);
+		setup_progress_info(&pinfo, entry->info, entry->fname, FILE_TS_DOING,
+			statbuf.st_size, total_n_send, speed, *(entry->pnfilesend));
+		gdk_threads_enter();
+		update_send_progress_bar(entry->dlg, &pinfo);
+		gdk_threads_leave();
 	}
+	(*(entry->pnfilesend))++;
 	close(fd);
 
 	return total_n_send;
 }
 
-static ulong send_regular_file(SOCKET sock, FileInfo * info, User * user)
+static ulong send_regular_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 {
 	ulong total_n_send = 0;
+	static ulong nfilesend = 0;
+	struct timeval tv1, tv2;
+	ulong speed = 0;
+	ProgressInfo pinfo;
+	SendDataEntry entry;
 
 	DEBUG_INFO("sending reagular file: %s(id: %d)", info->name, info->id);
-	total_n_send = send_file_data(sock, info->path);
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_DOING,
+		info->size, 0, 0, 0);
+	gdk_threads_enter();
+	update_send_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
+	setup_send_data_entry(&entry, sock, info->path, info->name,
+		info, &nfilesend, dlg);
+	GET_CLOCK_COUNT(&tv1);
+	total_n_send = send_file_data(&entry);
+	GET_CLOCK_COUNT(&tv2);
 	CLOSE(sock);
 
 	DEBUG_INFO("total send size: %ld", total_n_send);
-
+	speed = total_n_send/difftimeval(tv2,tv1);
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH,
+		info->size, total_n_send, speed, nfilesend);
+	gdk_threads_enter();
+	update_send_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
+	
 	return total_n_send;
 }
 
@@ -587,10 +723,11 @@ send_dir_header(SOCKET sock, const char *name, struct stat *statbuf,
 	return true;
 }
 
-ulong send_dir_data(SOCKET sock, const char *path, const char *dirname)
+ulong send_dir_data(SOCKET sock, const char *path, const char *dirname,
+	FileInfo *info, ulong *pnfilesend, SendDlg *dlg)
 {
 	DIR *dp;
-	struct dirent *entry;
+	struct dirent *dentry;
 	struct stat statbuf;
 	char tpath[MAX_PATH];
 	char file_path[MAX_PATH];
@@ -600,6 +737,7 @@ ulong send_dir_data(SOCKET sock, const char *path, const char *dirname)
 	ulong total_n_send = 0;
 	size_t n_send = 0;
 	size_t n_read = 0;
+	ProgressInfo pinfo;
 
 	build_path(tpath, path, ".");
 	DEBUG_INFO("sending dir: %s", tpath);
@@ -614,26 +752,29 @@ ulong send_dir_data(SOCKET sock, const char *path, const char *dirname)
 	if (!send_dir_header(sock, dirname, &statbuf, false))
 		goto err_out;
 
-	while ((entry = readdir(dp)) != NULL) {
-		build_path(file_path, tpath, entry->d_name);
+	while ((dentry = readdir(dp)) != NULL) {
+		build_path(file_path, tpath, dentry->d_name);
 		if (stat(file_path, &statbuf) == -1) {
 			DEBUG_ERROR("stat error!");
 			goto err_out;
 		}
 		if (S_ISDIR(statbuf.st_mode) &&
-		    (strcmp(".", entry->d_name) == 0
-		     || strcmp("..", entry->d_name) == 0))
+		    (strcmp(".", dentry->d_name) == 0
+		     || strcmp("..", dentry->d_name) == 0))
 			continue;
 		if (S_ISDIR(statbuf.st_mode)) {
 			/* Recurse at a new indent level */
 			total_n_send +=
-			    send_dir_data(sock, file_path, entry->d_name);
+			    send_dir_data(sock, file_path, dentry->d_name, info, pnfilesend, dlg);
 		} else if (S_ISREG(statbuf.st_mode)) {
 			//construct absolute file path
 			if (!send_dir_header
-			    (sock, entry->d_name, &statbuf, false))
+			    (sock, dentry->d_name, &statbuf, false))
 				goto err_out;
-			total_n_send += send_file_data(sock, file_path);
+			SendDataEntry entry;
+			setup_send_data_entry(&entry, sock, file_path, dentry->d_name,
+				info, pnfilesend, dlg);
+			total_n_send += send_file_data(&entry);
 		}
 	}
 	//change to parent dir
@@ -651,16 +792,32 @@ err_out:
   *	Next headersize: Next filename...
   * (All hex format except for filename and contetns-data)
   */
-static ulong send_dir_file(SOCKET sock, FileInfo * info, User * user)
+static ulong send_dir_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 {
 	size_t total_n_send = 0;
+	static ulong nfilesend = 0;
+	struct timeval tv1, tv2;
+	ulong speed = 0;
+	ProgressInfo pinfo;
 
 	DEBUG_INFO("sending dir file: %s(id: %d)", info->name, info->id);
-	total_n_send = send_dir_data(sock, info->path, info->name);
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_DOING, info->size, 0, 0, 0);
+	gdk_threads_enter();
+	update_send_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
+	GET_CLOCK_COUNT(&tv1);
+	total_n_send = send_dir_data(sock, info->path, info->name, info, &nfilesend, dlg);
+	GET_CLOCK_COUNT(&tv2);
 	CLOSE(sock);
 
 	DEBUG_INFO("total send size: %ld", total_n_send);
-
+	speed = total_n_send/difftimeval(tv2,tv1);
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH, info->size,
+		total_n_send, speed, nfilesend);
+	gdk_threads_enter();
+	update_send_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
+	
 	return total_n_send;
 }
 
@@ -677,11 +834,16 @@ static gpointer process_request_thread(gpointer data)
 	char buffer[MAX_TCPBUF];
 	ssize_t n_recv = 0;
 	Message msg;
+	SendDlg *dlg;
+	bool is_new;
+	ProgressInfo pinfo;
 
 	user = find_user(ipaddr);
 	if (!user)
 		return;
-
+	dlg = send_dlg_open(user, &is_new);
+	if(is_new) active_dlg(dlg, false);
+	
 	memset(buffer, 0, MAX_TCPBUF);
 	if ((n_recv = RECV(client_sock, buffer, MAX_TCPBUF, 0)) <= 0) {
 		DEBUG_ERROR("recv error!");
@@ -695,17 +857,22 @@ static gpointer process_request_thread(gpointer data)
 		return (gpointer) 0;
 	}
 	info->offset = request.offset;
+	setup_progress_info(&pinfo, info, info->name, FILE_TS_READY,
+		info->size, 0, 0, 0);
+	gdk_threads_enter();
+	update_send_progress_bar(dlg, &pinfo);
+	gdk_threads_leave();
 	switch (msg.commandNo) {
 	case IPMSG_GETFILEDATA:
 		{
 			DEBUG_INFO("Dispatch getfiledata\n");
-			send_regular_file(client_sock, info, user);
+			send_regular_file(client_sock, info, dlg);
 			break;
 		}
 	case IPMSG_GETDIRFILES:
 		{
 			DEBUG_INFO("Dispatch getdirfiles\n");
-			send_dir_file(client_sock, info, user);
+			send_dir_file(client_sock, info, dlg);
 			break;
 		}
 	default:
@@ -721,15 +888,14 @@ static gpointer recv_file_thread(gpointer data)
 {
 	RecvThreadArgs *args = (RecvThreadArgs *) data;
 	FileInfo *info = args->info;
-	User *user = args->user;
-
+	
 	switch (ipmsg_flags_get_command(info->attr)) {
 	case IPMSG_FILE_REGULAR:
 		build_path(args->path, args->path, info->name);
-		recv_regular_file(info, args->path, user);
+		recv_regular_file(info, args->path, args->dlg);
 		break;
 	case IPMSG_FILE_DIR:
-		recv_dir_file(info, args->path, user);
+		recv_dir_file(info, args->path, args->dlg);
 		break;
 	default:
 		break;
@@ -748,12 +914,12 @@ void tcp_request_entry(SOCKET client_sock, ulong ipaddr)
 			NULL);
 }
 
-void recv_file_entry(FileInfo * info, const char *path, User * user)
+void recv_file_entry(FileInfo * info, const char *path, SendDlg *dlg)
 {
 	RecvThreadArgs *args =
 	    (RecvThreadArgs *) malloc(sizeof(RecvThreadArgs));
+	args->dlg = dlg;
 	args->info = info;
-	args->user = user;
 	strcpy(args->path, path);
 
 	g_thread_create((GThreadFunc) recv_file_thread, args, FALSE, NULL);

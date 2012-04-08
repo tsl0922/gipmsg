@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -25,37 +25,41 @@
 
 extern MainWindow main_win;
 
+/* send file tree */
 enum {
-	SF_COL_ICON,
-	SF_COL_NAME,
-	SF_COL_TYPE,
-	SF_COL_SIZE,
-	SF_COL_PATH,
-	SF_COL_INFO,
+	SF_COL_ICON,		/* file icon */
+	SF_COL_NAME,		/* file name */
+	SF_COL_TYPE,		/* file type(regular file, dir file) */
+	SF_COL_SIZE,		/* file size */
+	SF_COL_PATH,		/* save path */
+	SF_COL_INFO,		/* FileInfo pointer(not displayed) */
 	SF_COL_NUM
 };
-
+/* recv file tree */
 enum {
-	RF_COL_ICON,
-	RF_COL_NAME,
-	RF_COL_TYPE,
-	RF_COL_SIZE,
-	RF_COL_PATH,
-	RF_COL_INFO,
+	RF_COL_ICON,		/* file icon */
+	RF_COL_NAME,		/* file name */
+	RF_COL_TYPE,		/* file type(regular file, dir file) */
+	RF_COL_SIZE,		/* file size */
+	RF_COL_PATH,		/* save path */
+	RF_COL_TIME,		/* recv path */
+	RF_COL_INFO,		/* FileInfo pointer(not displayed) */
 	RF_COL_NUM
 };
 
-struct ButtonCallbackArgs {
+typedef struct {
 	SendDlg *dlg;
 	void *data;
-};
+} CallbackArgs;
 
 typedef void *(*LinkButtonFunc) (GtkLinkButton * button, const gchar * link_,
 				 gpointer data);
 
 static void senddlg_ui_init(SendDlg * dlg);
-static GtkTreeModel *create_file_tree_model();
-static void create_file_tree_column(GtkTreeView * file_tree);
+static GtkTreeModel *create_send_tree_model();
+static GtkTreeModel *create_recv_tree_model();
+static void create_send_tree_column(GtkTreeView * send_tree);
+static void create_recv_tree_column(GtkTreeView * recv_tree);
 static void update_dlg_info(SendDlg * dlg);
 static void send_msg(SendEntry * entry);
 static void recv_text_add_button(SendDlg * dlg, const char *label,
@@ -75,13 +79,13 @@ SendDlg *senddlg_new(User * user)
 	}
 	dlg->timerId = 0;
 
-	dlg->user = user;
+	dlg->user = dup_user(user);
 	dlg->fontName = NULL;
 	dlg->emotionDlg = NULL;
 	dlg->send_list = NULL;
 	g_static_mutex_init(&dlg->mutex);
 	dlg->msg = NULL;
-	dlg->is_recv_file = false;
+	dlg->is_show_recv_file = FALSE;
 
 	senddlg_ui_init(dlg);
 
@@ -91,6 +95,8 @@ SendDlg *senddlg_new(User * user)
 static gboolean on_close_clicked(GtkWidget * widget, SendDlg * dlg)
 {
 	main_win.sendDlgList = g_list_remove(main_win.sendDlgList, dlg);
+	free_user_data(dlg->user);
+	if(dlg->msg) free_message_data(dlg->msg);
 	gtk_widget_destroy(dlg->dialog);
 	FREE_WITH_CHECK(dlg);
 
@@ -106,7 +112,7 @@ static void
 on_retry_link_clicked(GtkLinkButton * button, const gchar * link_,
 		      gpointer data)
 {
-	struct ButtonCallbackArgs *args = (struct ButtonCallbackArgs *)data;
+	CallbackArgs *args = (CallbackArgs *)data;
 	send_msg((SendEntry *) (args->data));
 	args->dlg->timerId =
 	    g_timeout_add(MSG_RETRY_INTERVAL, retry_message_handler, args->dlg);
@@ -117,7 +123,7 @@ on_retry_link_clicked(GtkLinkButton * button, const gchar * link_,
 static gboolean retry_message_handler(gpointer data)
 {
 	SendDlg *dlg = (SendDlg *) data;
-	GList *list = dlg->send_list;
+	GList *list = g_list_first(dlg->send_list);
 	SendEntry *entry;
 	bool finish = true;
 
@@ -138,9 +144,8 @@ static gboolean retry_message_handler(gpointer data)
 				senddlg_add_info(dlg, buf);
 				//create retry button
 				entry->retryCount = 0;	//reset retryCount
-				struct ButtonCallbackArgs *args =
-				    (struct ButtonCallbackArgs *)
-				    malloc(sizeof(struct ButtonCallbackArgs));
+				CallbackArgs *args =
+				    (CallbackArgs *)malloc(sizeof(CallbackArgs));
 				args->dlg = dlg;
 				args->data = entry;
 				recv_text_add_button(dlg, "Retry",
@@ -156,12 +161,12 @@ static gboolean retry_message_handler(gpointer data)
 			dlg->send_list =
 			    g_list_delete_link(dlg->send_list, list);
 			g_static_mutex_unlock(&dlg->mutex);
-			list = dlg->send_list;
+			list = g_list_first(dlg->send_list);
 			continue;
 		}
 		list = list->next;
 	}
-
+	
 	if (!finish)
 		dlg->timerId =
 		    g_timeout_add(MSG_RETRY_INTERVAL, retry_message_handler,
@@ -195,6 +200,93 @@ static void send_msg(SendEntry * entry)
 	if (entry->status == ST_SENDMSG) {
 		ipmsg_send_packet(entry->user->ipaddr, entry->packet,
 				  entry->packet_len);
+	}
+}
+
+void update_send_progress_bar(SendDlg *dlg, ProgressInfo *ppinfo)
+{
+	char buf[MAX_BUF];
+	char fname[15];
+	char speedstr[MAX_NAMEBUF];
+	float progress;
+
+	cut_string(fname, ppinfo->fname, 15);
+	format_filesize(speedstr,ppinfo->speed);
+	if(ppinfo->tstatus == FILE_TS_READY) {
+		gtk_label_set_markup(GTK_LABEL(dlg->send_file_text), ppinfo->info->name);
+		snprintf(buf, MAX_BUF, "%s/s(%%0.0)", speedstr);
+		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->send_progress_bar), buf);
+		gtk_box_pack_start(GTK_BOX(dlg->rb_box), dlg->send_progress_box, 
+				FALSE, FALSE, 0);
+		gtk_widget_show_all(dlg->rb_box);
+	}
+	if(ppinfo->tstatus == FILE_TS_DOING) {
+		snprintf(buf, MAX_BUF, "%s(%ld)", ppinfo->fname, ppinfo->ntrans);
+		gtk_label_set_markup(GTK_LABEL(dlg->send_file_text), buf);
+		progress = percent(ppinfo->tsize, ppinfo->ssize);
+		snprintf(buf, MAX_BUF, "%s/s(%%%0.1f)", speedstr, progress);
+		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dlg->send_progress_bar), progress/100);
+		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->send_progress_bar), buf);
+	}
+	if(ppinfo->tstatus == FILE_TS_FINISH) {
+		char sendsize[30];
+		format_filesize(sendsize, ppinfo->tsize);
+		dlg->send_progress_box = (GtkWidget *)g_object_ref(dlg->send_progress_box);
+		gtk_container_remove(GTK_CONTAINER(dlg->rb_box), dlg->send_progress_box);
+		if(ppinfo->info->attr & IPMSG_FILE_DIR) {
+			snprintf(buf, MAX_BUF, "Folder %s send finish! sended size: %s, average speed %s/s",
+				ppinfo->info->name, sendsize, speedstr);
+		}
+		else {
+			snprintf(buf, MAX_BUF, "File %s send finish! sended size: %s, average speed %s/s",
+				ppinfo->info->name, sendsize, speedstr);
+		}
+		senddlg_add_info(dlg, buf);
+		ppinfo->tstatus = FILE_TS_NONE;
+	}
+}
+
+void update_recv_progress_bar(SendDlg *dlg, ProgressInfo *ppinfo)
+{
+	char buf[MAX_BUF];
+	char fname[15];
+	char speedstr[MAX_NAMEBUF];
+	float progress;
+
+	cut_string(fname, ppinfo->fname, 15);
+	format_filesize(speedstr,ppinfo->speed);
+	if(ppinfo->tstatus == FILE_TS_READY) {
+		snprintf(buf, MAX_BUF, "%s(%ld)", fname, ppinfo->ntrans);
+		gtk_label_set_markup(GTK_LABEL(dlg->recv_file_text), buf);
+		snprintf(buf, MAX_BUF, "%s/s(%%0.0)", speedstr);
+		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->recv_progress_bar), buf);
+		gtk_box_pack_start(GTK_BOX(dlg->rt_box), dlg->recv_progress_box, 
+				FALSE, FALSE, 0);
+		gtk_widget_show_all(dlg->rt_box);
+	}
+	if(ppinfo->tstatus == FILE_TS_DOING) {
+		snprintf(buf, MAX_BUF, "%s(%ld)", fname, ppinfo->ntrans);
+		gtk_label_set_markup(GTK_LABEL(dlg->recv_file_text), buf);
+		progress = percent(ppinfo->tsize, ppinfo->ssize);
+		snprintf(buf, MAX_BUF, "%s/s(%%%0.1f)", speedstr, progress);
+		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dlg->recv_progress_bar), progress/100);
+		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->recv_progress_bar), buf);
+	}
+	if(ppinfo->tstatus == FILE_TS_FINISH) {
+		char recvsize[30];
+		format_filesize(recvsize, ppinfo->tsize);
+		dlg->recv_progress_box = (GtkWidget *)g_object_ref(dlg->recv_progress_box);
+		gtk_container_remove(GTK_CONTAINER(dlg->rt_box), dlg->recv_progress_box);
+		if(ppinfo->info->attr & IPMSG_FILE_DIR) {
+			snprintf(buf, MAX_BUF, "Folder %s recieve finish! recieved size: %s, average speed %s/s",
+				ppinfo->info->name, recvsize, speedstr);
+		}
+		else {
+			snprintf(buf, MAX_BUF, "File %s recieve finish! recieved size: %s, average speed %s/s",
+				ppinfo->info->name, recvsize, speedstr);
+		}
+		senddlg_add_info(dlg, buf);
+		ppinfo->tstatus = FILE_TS_NONE;
 	}
 }
 
@@ -309,7 +401,6 @@ static void on_send_image_clicked(GtkWidget * widget, SendDlg * dlg)
 					     GTK_RESPONSE_CANCEL,
 					     GTK_STOCK_OPEN,
 					     GTK_RESPONSE_ACCEPT, NULL);
-	gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(dialog), TRUE);
 	filter = gtk_file_filter_new();
 	gtk_file_filter_set_name(filter,
 				 "Image Files(*.jpg;*.jpeg;*.png;*.gif)");
@@ -397,7 +488,6 @@ static void on_send_file_clicked(GtkWidget * widget, SendDlg * dlg)
 					     GTK_RESPONSE_CANCEL,
 					     GTK_STOCK_OPEN,
 					     GTK_RESPONSE_ACCEPT, NULL);
-	gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(dialog), TRUE);
 	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		GSList *files =
@@ -419,7 +509,6 @@ static void on_send_folder_clicked(GtkWidget * widget, SendDlg * dlg)
 					     GTK_RESPONSE_CANCEL,
 					     GTK_STOCK_OPEN,
 					     GTK_RESPONSE_ACCEPT, NULL);
-	gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(dialog), TRUE);
 	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		GSList *files =
@@ -428,6 +517,256 @@ static void on_send_folder_clicked(GtkWidget * widget, SendDlg * dlg)
 		g_slist_free(files);
 	}
 	gtk_widget_destroy(dialog);
+}
+
+
+
+/* left mouse button click event */
+static void
+switch_recv_file_and_photo(SendDlg *dlg)
+{
+	if(dlg->is_show_recv_file) {
+		dlg->recv_file_scroll = (GtkWidget *)g_object_ref(dlg->recv_file_scroll);
+		gtk_container_remove(GTK_CONTAINER(dlg->rt_box), dlg->recv_file_scroll);
+		gtk_label_set_markup(GTK_LABEL(dlg->rt_label), "<b>Photo</b>");
+		gtk_box_pack_end(GTK_BOX(dlg->rt_box), dlg->photo_frame, TRUE, FALSE,
+			   0);
+		gtk_widget_show_all(dlg->rt_box);
+		dlg->is_show_recv_file = FALSE;
+	}
+	else {
+		dlg->photo_frame = (GtkWidget *)g_object_ref(dlg->photo_frame);
+		gtk_container_remove(GTK_CONTAINER(dlg->rt_box), dlg->photo_frame);
+		gtk_label_set_markup(GTK_LABEL(dlg->rt_label), "<b>Recieve File</b>");
+		gtk_box_pack_end(GTK_BOX(dlg->rt_box), dlg->recv_file_scroll, TRUE,
+			TRUE, 0);
+		gtk_widget_show_all(dlg->rt_box);
+		dlg->is_show_recv_file = TRUE;
+	}
+}
+static gboolean
+on_rt_evbox_clicked(GtkWidget *widget, GdkEventButton *event,
+		gpointer data)
+{
+	SendDlg *dlg = (SendDlg *)data;
+	
+	switch_recv_file_and_photo(dlg);
+	
+	return TRUE;
+}
+
+static void
+set_hand_cursor (GtkWidget *widget, gboolean   show_hand)
+{
+  GdkDisplay *display;
+  GdkCursor *cursor;
+
+  display = gtk_widget_get_display (widget);
+
+  cursor = NULL;
+  if (show_hand)
+    cursor = gdk_cursor_new_for_display (display, GDK_HAND2);
+
+  gdk_window_set_cursor (widget->window, cursor);
+  gdk_display_flush (display);
+
+  if (cursor)
+    gdk_cursor_unref (cursor);
+}
+
+
+/* mouse pointer move on the widget */
+static gboolean
+on_rt_evbox_enter_notify(GtkWidget *widget, GdkEventCrossing *event,
+		gpointer data)
+{
+	set_hand_cursor(widget, TRUE);
+}
+
+static gboolean
+on_rt_evbox_leave_notify(GtkWidget *widget, GdkEventCrossing *event,
+		gpointer data)
+{
+	set_hand_cursor(widget, FALSE);
+}
+
+static gchar *
+get_save_path(GtkWindow *parent)
+{
+	GtkWidget *dialog;
+	gchar *save_path = NULL;
+	
+	dialog = gtk_file_chooser_dialog_new("Select Save Path",
+					     parent,
+					     GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     GTK_STOCK_OPEN,
+					     GTK_RESPONSE_ACCEPT, NULL);
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		GFile *file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(dialog));
+		save_path = g_file_get_path(file);
+	}
+	gtk_widget_destroy(dialog);
+	
+	return save_path;
+}
+
+static void on_recv_menu_accept(GtkMenuItem * menu_item, gpointer data)
+{
+	CallbackArgs *args = (CallbackArgs *)data;
+	GtkTreeModel *model;
+	GtkTreePath *path = (GtkTreePath *)args->data;
+	GtkTreeIter iter;
+	FileInfo *info;
+	gchar *save_path;
+
+	if(!(save_path = get_save_path(GTK_WINDOW(args->dlg->dialog))))
+		return;
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(args->dlg->recv_file_tree));
+	if (!gtk_tree_model_get_iter(model, &iter, path))
+		return;
+	gtk_tree_model_get(model, &iter, RF_COL_INFO, &info, -1);
+	recv_file_entry(info, save_path, args->dlg);
+	gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+	
+	gtk_tree_path_free(path);
+	FREE_WITH_CHECK(args);
+}
+
+static void on_recv_menu_refuse(GtkMenuItem * menu_item, gpointer data)
+{
+	CallbackArgs *args = (CallbackArgs *)data;
+	GtkTreeModel *model;
+	GtkTreePath *path = (GtkTreePath *)args->data;
+	GtkTreeIter iter;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(args->dlg->recv_file_tree));
+	if (gtk_tree_model_get_iter(model, &iter, path)) {
+		gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+	}
+	gtk_tree_path_free(path);
+	FREE_WITH_CHECK(args);
+}
+
+static void on_recv_menu_accept_all(GtkMenuItem * menu_item, gpointer data)
+{
+	CallbackArgs *args = (CallbackArgs *)data;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	FileInfo *info;
+	gchar *save_path;
+
+	if(!(save_path = get_save_path(GTK_WINDOW(args->dlg->dialog))))
+		return;
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(args->dlg->recv_file_tree));
+	if (gtk_tree_model_get_iter_first(model, &iter)) {
+		do {
+			gtk_tree_model_get(model, &iter, RF_COL_INFO, &info, -1);
+			recv_file_entry(info, save_path, args->dlg);
+			gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+		} while (gtk_tree_model_iter_next(model, &iter));
+	}
+	
+	gtk_tree_path_free((GtkTreePath *)args->data);
+	FREE_WITH_CHECK(args);
+}
+
+static void on_recv_menu_refuse_all(GtkMenuItem * menu_item, gpointer data)
+{
+	CallbackArgs *args = (CallbackArgs *)data;
+
+	gtk_list_store_clear(GTK_LIST_STORE(
+		gtk_tree_view_get_model(GTK_TREE_VIEW(args->dlg->recv_file_tree))));
+	
+	gtk_tree_path_free((GtkTreePath *)args->data);
+	FREE_WITH_CHECK(args);
+}
+
+
+static gboolean 
+on_recv_tree_menu_popup(GtkWidget * treeview, GdkEventButton * event, gpointer data)
+{
+	GtkTreeModel *model;
+	GtkTreePath *path;
+	GtkWidget *menu;
+	CallbackArgs *args;
+
+	if (event->button != 3
+	    || !gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview),
+					      (gint) (event->x),
+					      (gint) (event->y), &path, NULL,
+					      NULL, NULL))
+		return FALSE;
+	gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview),
+				      (gint) event->x, (gint) event->y, &path,
+				      NULL, NULL, NULL);
+	args = (CallbackArgs *)malloc(sizeof(CallbackArgs));
+	args->dlg = (SendDlg *)data;
+	args->data = path;
+	menu = gtk_menu_new();
+	create_menu_item("Accept", NULL, menu, TRUE,
+			 (MenuCallBackFunc) on_recv_menu_accept, args);
+	create_menu_item("Refuse", NULL, menu, TRUE,
+			 (MenuCallBackFunc) on_recv_menu_refuse, args);
+	create_menu_item("Accept All", NULL, menu, TRUE,
+			 (MenuCallBackFunc) on_recv_menu_accept_all, args);
+	create_menu_item("Refuse All", NULL, menu, TRUE,
+			 (MenuCallBackFunc) on_recv_menu_refuse_all, args);
+	gtk_widget_show_all(menu);
+	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+		       event->button, event->time);
+	
+	return TRUE;
+}
+
+static void
+on_recv_tree_item_activited(GtkTreeView * treeview, GtkTreePath * path,
+		       GtkTreeViewColumn * column, gpointer data)
+{
+	SendDlg *dlg = (SendDlg *)data;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	FileInfo *info;
+	gchar *save_path;
+
+	if(!(save_path = get_save_path(GTK_WINDOW(dlg->dialog))))
+		return;
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
+	if (!gtk_tree_model_get_iter(model, &iter, path))
+		return;
+	gtk_tree_model_get(model, &iter, RF_COL_INFO, &info, -1);
+	recv_file_entry(info, save_path, dlg);
+	gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+}
+
+static void on_send_menu_cancel(GtkMenuItem * menu_item, gpointer data)
+{
+	SendDlg *dlg = (SendDlg *)data;
+
+	gtk_list_store_clear(GTK_LIST_STORE(
+		gtk_tree_view_get_model(GTK_TREE_VIEW(dlg->send_file_tree))));
+}
+
+
+static gboolean 
+on_send_tree_menu_popup(GtkWidget * treeview, GdkEventButton * event, gpointer data)
+{
+	GtkTreeModel *model;
+	GtkTreePath *path;
+	GtkTreeIter iter;
+	GtkWidget *menu;
+
+	if (event->button != 3)
+		return FALSE;
+	menu = gtk_menu_new();
+	create_menu_item("Cancel", NULL, menu, TRUE,
+			 (MenuCallBackFunc) on_send_menu_cancel, data);
+	gtk_widget_show_all(menu);
+	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+		       event->button, event->time);
+	
+	return TRUE;
 }
 
 static void senddlg_ui_init(SendDlg * dlg)
@@ -505,10 +844,11 @@ static void senddlg_ui_init(SendDlg * dlg)
 				       GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scroll),
 					    GTK_SHADOW_ETCHED_IN);
+	/* message area textview */
 	dlg->recv_text = gtk_text_view_new();
 	gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(dlg->recv_text), FALSE);
 	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(dlg->recv_text),
-				    GTK_WRAP_CHAR);
+				    GTK_WRAP_WORD_CHAR);
 	gtk_text_view_set_editable(GTK_TEXT_VIEW(dlg->recv_text), FALSE);
 	gtk_container_add(GTK_CONTAINER(scroll), dlg->recv_text);
 
@@ -582,6 +922,7 @@ static void senddlg_ui_init(SendDlg * dlg)
 
 	/*toolbar end */
 
+	/* send message textview */
 	scroll = gtk_scrolled_window_new(NULL, NULL);
 	gtk_box_pack_start(GTK_BOX(lvbox), scroll, FALSE, FALSE, 0);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
@@ -596,13 +937,14 @@ static void senddlg_ui_init(SendDlg * dlg)
 
 	dlg->send_buffer =
 	    gtk_text_view_get_buffer(GTK_TEXT_VIEW(dlg->send_text));
-	gtk_text_buffer_get_iter_at_offset(dlg->send_buffer, &(dlg->send_iter),
+	gtk_text_buffer_get_iter_at_offset(dlg->send_buffer, &dlg->send_iter,
 					   0);
 
 	halign = gtk_alignment_new(1, 0, 0, 0);
 	gtk_container_add(GTK_CONTAINER(halign), action_area);
 	gtk_box_pack_start(GTK_BOX(vbox), halign, FALSE, FALSE, 0);
 
+	/* send and close button */
 	button = gtk_button_new_with_label("Close");
 	gtk_widget_set_size_request(button, 100, 30);
 	gtk_box_pack_start(GTK_BOX(action_area), button, FALSE, TRUE, 2);
@@ -620,9 +962,14 @@ static void senddlg_ui_init(SendDlg * dlg)
 			y + rand() % 100);
 
 	/*right box start */
+	vpaned = gtk_vpaned_new();
+	gtk_box_pack_start(GTK_BOX(rvbox), vpaned, TRUE, TRUE, 0);
 	//top: photo Image/recieve file
 	dlg->rt_box = gtk_vbox_new(FALSE, 0);
 	dlg->rt_evbox = gtk_event_box_new();
+	g_signal_connect(dlg->rt_evbox, "button-press-event", G_CALLBACK(on_rt_evbox_clicked), dlg);
+	g_signal_connect(dlg->rt_evbox, "enter-notify-event", G_CALLBACK(on_rt_evbox_enter_notify), NULL);
+	g_signal_connect(dlg->rt_evbox, "leave-notify-event", G_CALLBACK(on_rt_evbox_leave_notify), NULL);
 	dlg->rt_label = gtk_label_new(NULL);
 	gtk_label_set_markup(GTK_LABEL(dlg->rt_label), "<b>Photo</b>");
 	gtk_misc_set_alignment(GTK_MISC(dlg->rt_label), 0, 0.5);
@@ -633,43 +980,23 @@ static void senddlg_ui_init(SendDlg * dlg)
 	gtk_frame_set_shadow_type(GTK_FRAME(dlg->photo_frame),
 				  GTK_SHADOW_ETCHED_IN);
 	gtk_widget_set_size_request(dlg->photo_frame, 180, 160);
-
 	sprintf(portraitPath, "%s", ICON_PATH "icon.png");
 	pb = gdk_pixbuf_new_from_file_at_size(portraitPath, 140, 140, NULL);
 	dlg->photo_image = gtk_image_new_from_pixbuf(pb);
 	g_object_unref(pb);
 	gtk_container_add(GTK_CONTAINER(dlg->photo_frame), dlg->photo_image);
-	gtk_box_pack_start(GTK_BOX(dlg->rt_box), dlg->photo_frame, FALSE, FALSE,
+	gtk_box_pack_end(GTK_BOX(dlg->rt_box), dlg->photo_frame, TRUE, FALSE,
 			   0);
-	gtk_box_pack_start(GTK_BOX(rvbox), dlg->rt_box, FALSE, FALSE, 0);
+	gtk_paned_pack1(GTK_PANED(vpaned), dlg->rt_box, TRUE, FALSE);
+	gtk_paned_set_position(GTK_PANED(vpaned), 160);
 
-	//buttom: send file
-	dlg->rb_box = gtk_vbox_new(FALSE, 0);
-	dlg->rb_evbox = gtk_event_box_new();
-	dlg->rb_label = gtk_label_new(NULL);
-	gtk_label_set_markup(GTK_LABEL(dlg->rb_label), "<b>Send File</b>");
-	gtk_misc_set_alignment(GTK_MISC(dlg->rb_label), 0, 0.5);
-	gtk_container_add(GTK_CONTAINER(dlg->rb_evbox), dlg->rb_label);
-	gtk_box_pack_start(GTK_BOX(dlg->rb_box), dlg->rb_evbox, FALSE, FALSE,
-			   0);
-	dlg->send_file_scroll = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW
-				       (dlg->send_file_scroll),
-				       GTK_POLICY_AUTOMATIC,
-				       GTK_POLICY_AUTOMATIC);
-	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW
-					    (dlg->send_file_scroll),
-					    GTK_SHADOW_ETCHED_IN);
-	gtk_widget_set_size_request(dlg->send_file_scroll, 180, 120);
-	dlg->send_file_tree =
-	    gtk_tree_view_new_with_model(create_file_tree_model());
-	create_file_tree_column(GTK_TREE_VIEW(dlg->send_file_tree));
-	gtk_container_add(GTK_CONTAINER(dlg->send_file_scroll),
-			  dlg->send_file_tree);
-	gtk_box_pack_start(GTK_BOX(dlg->rb_box), dlg->send_file_scroll, FALSE,
-			   FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(rvbox), dlg->rb_box, TRUE, TRUE, 0);
-
+	dlg->recv_progress_box = gtk_vbox_new(FALSE, 0);
+	dlg->recv_progress_bar = gtk_progress_bar_new();
+	dlg->recv_file_text = gtk_label_new(NULL);
+	gtk_box_pack_start(GTK_BOX(dlg->recv_progress_box), dlg->recv_progress_bar,
+		TRUE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(dlg->recv_progress_box), dlg->recv_file_text,
+		TRUE, FALSE, 0);
 	dlg->recv_file_scroll = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW
 				       (dlg->recv_file_scroll),
@@ -680,18 +1007,58 @@ static void senddlg_ui_init(SendDlg * dlg)
 					    GTK_SHADOW_ETCHED_IN);
 	gtk_widget_set_size_request(dlg->recv_file_scroll, 180, 160);
 	dlg->recv_file_tree =
-	    gtk_tree_view_new_with_model(create_file_tree_model());
-	create_file_tree_column(GTK_TREE_VIEW(dlg->recv_file_tree));
+	    gtk_tree_view_new_with_model(create_recv_tree_model());
+	create_recv_tree_column(GTK_TREE_VIEW(dlg->recv_file_tree));
+	g_signal_connect(dlg->recv_file_tree, "button-press-event",
+			 G_CALLBACK(on_recv_tree_menu_popup), dlg);
+	g_signal_connect(dlg->recv_file_tree, "row-activated",
+			 G_CALLBACK(on_recv_tree_item_activited), dlg);
 	gtk_container_add(GTK_CONTAINER(dlg->recv_file_scroll),
 			  dlg->recv_file_tree);
-
+	
+	//buttom: send file
+	dlg->rb_box = gtk_vbox_new(FALSE, 0);
+	dlg->rb_evbox = gtk_event_box_new();
+	dlg->rb_label = gtk_label_new(NULL);
+	gtk_label_set_markup(GTK_LABEL(dlg->rb_label), "<b>Send File</b>");
+	gtk_misc_set_alignment(GTK_MISC(dlg->rb_label), 0, 0.5);
+	gtk_container_add(GTK_CONTAINER(dlg->rb_evbox), dlg->rb_label);
+	gtk_box_pack_start(GTK_BOX(dlg->rb_box), dlg->rb_evbox, FALSE, FALSE,
+			   0);
+	dlg->send_progress_box = gtk_vbox_new(FALSE, 0);
+	dlg->send_progress_bar = gtk_progress_bar_new();
+	dlg->send_file_text = gtk_label_new(NULL);
+	gtk_box_pack_start(GTK_BOX(dlg->send_progress_box), dlg->send_progress_bar,
+		TRUE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(dlg->send_progress_box), dlg->send_file_text,
+		TRUE, FALSE, 0);
+	dlg->send_file_scroll = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW
+				       (dlg->send_file_scroll),
+				       GTK_POLICY_AUTOMATIC,
+				       GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW
+					    (dlg->send_file_scroll),
+					    GTK_SHADOW_ETCHED_IN);
+	gtk_widget_set_size_request(dlg->send_file_scroll, 180, 160);
+	dlg->send_file_tree =
+	    gtk_tree_view_new_with_model(create_send_tree_model());
+	create_send_tree_column(GTK_TREE_VIEW(dlg->send_file_tree));
+	g_signal_connect(dlg->send_file_tree, "button-press-event",
+			 G_CALLBACK(on_send_tree_menu_popup), dlg);
+	gtk_container_add(GTK_CONTAINER(dlg->send_file_scroll),
+			  dlg->send_file_tree);
+	gtk_box_pack_end(GTK_BOX(dlg->rb_box), dlg->send_file_scroll, TRUE,
+			   TRUE, 0);
+	gtk_paned_pack2(GTK_PANED(vpaned), dlg->rb_box, TRUE, FALSE);
+	
 	/*end right box */
 
 	GTK_WIDGET_SET_FLAGS(dlg->send_text, GTK_CAN_FOCUS);
 	gtk_widget_grab_focus(dlg->send_text);
 
 	update_dlg_info(dlg);
-	gtk_widget_show_all(dlg->dialog);
+	gtk_widget_show_all(vbox);
 }
 
 void senddlg_add_message(SendDlg * dlg, const char *msg, bool issendmsg)
@@ -784,7 +1151,7 @@ recv_text_add_button(SendDlg * dlg, const char *label, const char *tip_text,
 					   dlg->mark);
 }
 
-static GtkTreeModel *create_file_tree_model()
+static GtkTreeModel *create_send_tree_model()
 {
 	GtkListStore *store;
 
@@ -796,7 +1163,7 @@ static GtkTreeModel *create_file_tree_model()
 	return GTK_TREE_MODEL(store);
 }
 
-static void create_file_tree_column(GtkTreeView * file_tree)
+static void create_send_tree_column(GtkTreeView * send_tree)
 {
 	GtkTreeViewColumn *column;
 	GtkCellRenderer *renderer;
@@ -809,25 +1176,77 @@ static void create_file_tree_column(GtkTreeView * file_tree)
 	gtk_tree_view_column_pack_start(column, renderer, FALSE);
 	gtk_tree_view_column_set_attributes(column, renderer, "text",
 					    SF_COL_NAME, NULL);
-	gtk_tree_view_append_column(file_tree, column);
+	gtk_tree_view_append_column(send_tree, column);
 
 	renderer = gtk_cell_renderer_text_new();
 	column = gtk_tree_view_column_new_with_attributes("Type",
 							  renderer, "text",
 							  SF_COL_TYPE, NULL);
-	gtk_tree_view_append_column(file_tree, column);
+	gtk_tree_view_append_column(send_tree, column);
 
 	renderer = gtk_cell_renderer_text_new();
 	column = gtk_tree_view_column_new_with_attributes("Size",
 							  renderer, "text",
 							  SF_COL_SIZE, NULL);
-	gtk_tree_view_append_column(file_tree, column);
+	gtk_tree_view_append_column(send_tree, column);
 
 	renderer = gtk_cell_renderer_text_new();
 	column = gtk_tree_view_column_new_with_attributes("Path",
 							  renderer, "text",
 							  SF_COL_PATH, NULL);
-	gtk_tree_view_append_column(file_tree, column);
+	gtk_tree_view_append_column(send_tree, column);
+}
+
+static GtkTreeModel *create_recv_tree_model()
+{
+	GtkListStore *store;
+
+	store = gtk_list_store_new(RF_COL_NUM,
+				   GDK_TYPE_PIXBUF, G_TYPE_STRING,
+				   G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
+				   G_TYPE_STRING, G_TYPE_POINTER);
+
+	return GTK_TREE_MODEL(store);
+}
+
+static void create_recv_tree_column(GtkTreeView * send_tree)
+{
+	GtkTreeViewColumn *column;
+	GtkCellRenderer *renderer;
+
+	renderer = gtk_cell_renderer_pixbuf_new();
+	column = gtk_tree_view_column_new_with_attributes("Name",
+							  renderer, "pixbuf",
+							  RF_COL_ICON, NULL);
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_column_pack_start(column, renderer, FALSE);
+	gtk_tree_view_column_set_attributes(column, renderer, "text",
+					    RF_COL_NAME, NULL);
+	gtk_tree_view_append_column(send_tree, column);
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Type",
+							  renderer, "text",
+							  RF_COL_TYPE, NULL);
+	gtk_tree_view_append_column(send_tree, column);
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Size",
+							  renderer, "text",
+							  RF_COL_SIZE, NULL);
+	gtk_tree_view_append_column(send_tree, column);
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Save Path",
+							  renderer, "text",
+							  RF_COL_PATH, NULL);
+	gtk_tree_view_append_column(send_tree, column);
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Recieved Time",
+							  renderer, "text",
+							  RF_COL_TIME, NULL);
+	gtk_tree_view_append_column(send_tree, column);
 }
 
 static void update_dlg_info(SendDlg * dlg)
@@ -904,9 +1323,11 @@ static void update_recv_file_tree(SendDlg * dlg, GSList * files)
 	FileInfo *info;
 	bool is_folder;
 	char filesize[MAX_NAMEBUF];
+	char time[30];
 
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(dlg->recv_file_tree));
 	GSList *entry = files;
+	strftime(time, sizeof(time), "%F %T", get_currenttime()); 
 	while (entry) {
 		GtkTreeIter iter;
 
@@ -927,23 +1348,12 @@ static void update_recv_file_tree(SendDlg * dlg, GSList * files)
 				   RF_COL_NAME, info->name,
 				   RF_COL_TYPE, is_folder ? "folder" : "file",
 				   RF_COL_SIZE, filesize,
+				   RF_COL_PATH, "",
+				   RF_COL_TIME, time,
 				   RF_COL_INFO, info, -1);
-		recv_file_entry(info, "/home/tsl0922/recv", dlg->user);
 		entry = entry->next;
 	};
 }
-
-static void show_recv_file_area(SendDlg * dlg)
-{
-	if (dlg->is_recv_file)
-		return;
-	gtk_container_remove(GTK_CONTAINER(dlg->rt_box), dlg->photo_frame);
-	gtk_label_set_markup(GTK_LABEL(dlg->rt_label), "<b>Recieve File</b>");
-	gtk_container_add(GTK_CONTAINER(dlg->rt_box), dlg->recv_file_scroll);
-	gtk_widget_show_all(dlg->rt_box);
-
-}
-
 void senddlg_add_fileattach(SendDlg * dlg, GSList * files)
 {
 	char buf[MAX_BUF];
@@ -951,7 +1361,7 @@ void senddlg_add_fileattach(SendDlg * dlg, GSList * files)
 		 "please recieve at the right.",
 		 dlg->user->nickName, g_slist_length(files));
 	senddlg_add_info(dlg, buf);
-	show_recv_file_area(dlg);
-	dlg->is_recv_file = true;
 	update_recv_file_tree(dlg, files);
+	dlg->is_show_recv_file = FALSE;		/* set it to false to switch to recv file tree */
+	switch_recv_file_and_photo(dlg);
 }

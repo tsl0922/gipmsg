@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -23,16 +23,24 @@
 
 #define FREE_WITH_CHECK(x) \
 	if(x != NULL) free(x); x=NULL;
+#define STRDUP_WITH_CHECK(dst,src) \
+	dst = (src)?strdup((const char *)(src)):NULL;
+#define percent(num1,num2) (100.0f*(num1)/(num2))
+#define difftimeval(val2,val1) \
+        ((((val2).tv_sec-(val1).tv_sec)*1000000 \
+        + (val2).tv_usec-(val1).tv_usec) \
+        / 1000000.0f)
+
 char *get_sys_user_name();
 char *get_sys_host_name();
 char *get_addr_str(ulong addr_data);
 AddrInfo *get_sys_addr_info(int *len_p);
 bool is_sys_host_addr(ulong ipaddr);
 void build_path(char *path, const char *base, const char *name);
+void cut_string(char *new_str, const char *old_str, int new_len);
 struct tm *get_currenttime();
 void setup_sockaddr(struct sockaddr_in *sockaddr, ulong ipaddr, int port);
 char *seprate_token(const char *buf, char seprator, char **offset_p);
-
 ssize_t xsend(SOCKET sock, const void *buf, size_t count, int flags);
 ssize_t xrecv(SOCKET sock, const void *buf, size_t count, int flags);
 ssize_t xread(int fd, const void *buf, size_t count);

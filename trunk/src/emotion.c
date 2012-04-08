@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -25,6 +25,11 @@ struct emotion {
 	const char *symbol;
 	int id;
 };
+
+typedef struct {
+	SendDlg *dlg;
+	int id;
+} EmotionArgs;
 
 static struct emotion emotions[] = {
 	{N_("Smile"), ":)", 1},
@@ -134,41 +139,85 @@ emotion_focus_out(GtkWidget * widget, GdkEventFocus * event, gpointer data)
 	SendDlg *dlg = (SendDlg *) data;
 	gtk_widget_destroy(dlg->emotionDlg);
 	dlg->emotionDlg = NULL;
-
+	
 	return TRUE;
 }
 
 static gboolean
 emotion_clicked(GtkWidget * widget, GdkEventButton * event, gpointer data)
 {
-	struct EmotionArgs *emotionArgs = (struct EmotionArgs *)data;
-	GtkTextBuffer *buffer;
+	EmotionArgs *args = (EmotionArgs *)data;
 	GtkTextIter iter;
 	char buf[MAX_NAMEBUF];
 
-	buffer =
-	    gtk_text_view_get_buffer(GTK_TEXT_VIEW
-				     (emotionArgs->dlg->send_text));
-
-	gtk_text_buffer_get_end_iter(buffer, &iter);
-	sprintf(buf, "/%s", emotions[emotionArgs->id - 1].symbol);
-	gtk_text_buffer_insert(buffer, &iter, buf, -1);
-
-	gtk_widget_destroy(emotionArgs->dlg->emotionDlg);
-	emotionArgs->dlg->emotionDlg = NULL;
-
+	gtk_text_buffer_get_end_iter(args->dlg->send_buffer, &args->dlg->send_iter);
+	sprintf(buf, "/%s", emotions[args->id - 1].symbol);
+	gtk_text_buffer_insert(args->dlg->send_buffer, &args->dlg->send_iter, buf, -1);
+	gtk_widget_destroy(args->dlg->emotionDlg);
+	args->dlg->emotionDlg = NULL;
+	
+	FREE_WITH_CHECK(args);
+	
 	return FALSE;
+}
+
+static gboolean
+emotion_enter_notify(GtkWidget *widget, GdkEventCrossing *event,
+		gpointer data)
+{
+	EmotionArgs *args = (EmotionArgs *)data;
+	GtkWidget *image;
+	char path[MAX_BUF];
+
+	sprintf(path, EMOTION_PATH "%d.gif", args->id);
+
+	image = gtk_bin_get_child(GTK_BIN(widget));
+	gtk_container_remove(GTK_CONTAINER(widget), image);
+	image = gtk_image_new_from_file(path);
+	gtk_container_add(GTK_CONTAINER(widget), image);
+	gtk_widget_show_all(widget);
+	/* args will be used later in function emotion_clicked, don't free it there */
+//		FREE_WITH_CHECK(args);
+
+	return TRUE;
+}
+
+static gboolean
+emotion_leave_notify(GtkWidget *widget, GdkEventCrossing *event,
+		gpointer data)
+{
+	EmotionArgs *args = (EmotionArgs *)data;
+	GtkWidget *image;
+	GdkPixbuf *pb;
+	char path[MAX_BUF];
+
+	sprintf(path, EMOTION_PATH "%d.gif", args->id);
+	pb = gdk_pixbuf_new_from_file(path, NULL);
+	if(!pb)
+		return FALSE;
+	image = gtk_bin_get_child(GTK_BIN(widget));
+	gtk_container_remove(GTK_CONTAINER(widget), image);
+	image = gtk_image_new_from_pixbuf(pb);
+	gtk_container_add(GTK_CONTAINER(widget), image);
+	gtk_widget_show_all(widget);
+	g_object_unref(pb);
+
+	/* args will be used later in function emotion_clicked, don't free it there */
+//		FREE_WITH_CHECK(args);
+	
+	return TRUE;
 }
 
 void show_emotion_dialog(SendDlg * dlg, int x, int y)
 {
 	GtkWidget *table;
 	GtkWidget *frame, *subframe;
-	GtkWidget *image, *eventbox;
+	GtkWidget *eventbox;
+	GtkWidget *image;
+	GdkPixbuf *pb;
 	char path[MAX_BUF];
 	char tooltip[MAX_BUF];
 	int i, j, k;
-	struct EmotionArgs *emotionArgs;
 
 	dlg->emotionDlg = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_decorated(GTK_WINDOW(dlg->emotionDlg), FALSE);
@@ -198,24 +247,28 @@ void show_emotion_dialog(SendDlg * dlg, int x, int y)
 			memset(path, 0, sizeof(path));
 			if (k < emotion_count) {
 				sprintf(path, EMOTION_PATH "%d.gif", (k++) + 1);
-				image = gtk_image_new_from_file(path);
-				if (!image)
+				pb = gdk_pixbuf_new_from_file(path, NULL);
+				if (!pb)
 					continue;
+				image = gtk_image_new_from_pixbuf(pb);
+				g_object_unref(pb);
 				eventbox = gtk_event_box_new();
 				sprintf(tooltip, "%s /%s", emotions[k - 1].name,
 					emotions[k - 1].symbol);
 				gtk_widget_set_tooltip_text(eventbox, tooltip);
-				gtk_container_add(GTK_CONTAINER(eventbox),
-						  image);
-				emotionArgs =
-				    (struct EmotionArgs *)
-				    malloc(sizeof(struct EmotionArgs));
-				emotionArgs->dlg = dlg;
-				emotionArgs->id = k;
+				gtk_container_add(GTK_CONTAINER(eventbox), image);
+				EmotionArgs *args =
+				    (EmotionArgs *)malloc(sizeof(EmotionArgs));
+				args->dlg = dlg;
+				args->id = k;
 				g_signal_connect(eventbox, "button-press-event",
 						 GTK_SIGNAL_FUNC
 						 (emotion_clicked),
-						 emotionArgs);
+						 args);
+				g_signal_connect(eventbox, "enter-notify-event", 
+						G_CALLBACK(emotion_enter_notify), args);
+				g_signal_connect(eventbox, "leave-notify-event", 
+						G_CALLBACK(emotion_leave_notify), args);
 				gtk_container_add(GTK_CONTAINER(subframe),
 						  eventbox);
 			}
@@ -255,11 +308,8 @@ void msg_parse_emotion(GtkWidget * text, GtkTextIter * iter, const char *msg)
 			if (id > 0) {
 				//insert text before emotion
 				gtk_text_buffer_insert_with_tags_by_name(buffer,
-									 iter,
-									 msg +
-									 p,
-									 i - p,
-									 "tm10",
+									 iter, msg + p,
+									 i - p, "tm10",
 									 NULL);
 				//insert emotion
 				sprintf(path, EMOTION_PATH "%d.gif", id);
@@ -268,7 +318,7 @@ void msg_parse_emotion(GtkWidget * text, GtkTextIter * iter, const char *msg)
 				anchor =
 				    gtk_text_buffer_create_child_anchor(buffer,
 									iter);
-				gtk_text_view_add_child_at_anchor(text, image,
+				gtk_text_view_add_child_at_anchor(GTK_TEXT_VIEW(text), image,
 								  anchor);
 				i += smlen + 1;
 				p = i;

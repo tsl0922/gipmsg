@@ -2,12 +2,12 @@
  *  
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
- * This library is free software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -138,38 +138,50 @@ static gpointer tcp_server_thread(gpointer data)
 
 static void ipmsg_proc_br_entry(SOCKET sock, Message * msg)
 {
-	ulong client_addr;
-
 	if (!is_sys_host_addr(msg->fromAddr)) {
 		ipmsg_send_ansentry(msg->fromAddr);
 	}
-	gdk_threads_enter();
-	add_user(msg);
-	gdk_threads_leave();
+	if(!find_user(msg->fromAddr)) {
+		User *user = add_user(msg);
+		gdk_threads_enter();
+		user_tree_add_user(user);
+		gdk_threads_leave();
+	}
 	print_user_list();
 }
 
 static void ipmsg_proc_br_exit(SOCKET sock, Message * msg)
 {
-	gdk_threads_enter();
-	del_user(msg);
-	gdk_threads_leave();
+	if(find_user(msg->fromAddr)) {
+		gdk_threads_enter();
+		user_tree_del_user(msg->fromAddr);
+		gdk_threads_leave();
+		del_user(msg);
+	}
 	print_user_list();
 }
 
 static void ipmsg_proc_ans_entry(SOCKET sock, Message * msg)
 {
-	gdk_threads_enter();
-	add_user(msg);
-	gdk_threads_leave();
+	if(!find_user(msg->fromAddr)) {
+		User *user = add_user(msg);
+		gdk_threads_enter();
+		user_tree_add_user(user);
+		gdk_threads_leave();
+	}
 	print_user_list();
 }
 
 static void ipmsg_proc_br_absence(SOCKET sock, Message * msg)
 {
-	gdk_threads_enter();
-	update_user(msg);
-	gdk_threads_leave();
+	User *user = NULL;
+	
+	user = update_user(msg);
+	if(user) {
+		gdk_threads_enter();
+		user_tree_update_user(user);
+		gdk_threads_leave();
+	}
 	print_user_list();
 }
 
@@ -385,7 +397,7 @@ void ipmsg_send_ansrecvmsg(ulong toAddr, packet_no_t packet_no)
 	struct sockaddr_in sockaddr;
 	char buf[MAX_NAMEBUF];
 
-	sprintf(buf, "%d", packet_no);
+	sprintf(buf, "%ld", packet_no);
 	build_packet(packet, IPMSG_RECVMSG, buf, NULL, &packet_len, &pkt_no);
 	setup_sockaddr(&sockaddr, toAddr, config_get_port());
 	SENDTO(udp_sock, packet, packet_len, 0,

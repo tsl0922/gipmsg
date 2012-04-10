@@ -21,7 +21,11 @@
 #ifndef __GIPMSG_CONFIG_H__
 #define __GIPMSG_CONFIG_H__
 
+#ifdef _LINUX
 #define HOME_PATH            "/usr/share/gipmsg/"
+#else
+#define HOME_PATH            "./"
+#endif
 #define CONFIG_FILE_PATH     "~/.config/ichat/config.ini"
 #define ICON_PATH            HOME_PATH "icons/"
 #define LOCALE_PATH          HOME_PATH "locales/"

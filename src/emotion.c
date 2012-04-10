@@ -316,8 +316,7 @@ void msg_parse_emotion(GtkWidget * text, GtkTextIter * iter, const char *msg)
 				image = gtk_image_new_from_file(path);
 				gtk_widget_show(image);
 				anchor =
-				    gtk_text_buffer_create_child_anchor(buffer,
-									iter);
+				    gtk_text_buffer_create_child_anchor(buffer, iter);
 				gtk_text_view_add_child_at_anchor(GTK_TEXT_VIEW(text), image,
 								  anchor);
 				i += smlen + 1;

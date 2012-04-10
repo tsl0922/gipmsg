@@ -55,7 +55,6 @@ AC_PROG_RANLIB
 
 # Initialize libtool
 LT_PREREQ([2.2.6])
-LT_INIT(disable-static)
 
 # Checks for libraries.
 PKG_CHECK_MODULES([GIPMSG], [
@@ -65,7 +64,7 @@ PKG_CHECK_MODULES([GIPMSG], [
 ])
 
 if test "$os_win32" = "yes"; then
-  LIBS="-lws2_32 -liphlpapi $LIBS"
+  LIBS="-lws2_32 -liphlpapi -mwindows $LIBS"
 fi
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h locale.h netdb.h netinet/in.h stddef.h stdlib.h string.h sys/ioctl.h sys/socket.h sys/time.h unistd.h])

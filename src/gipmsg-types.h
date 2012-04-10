@@ -61,20 +61,27 @@ typedef struct {
 struct _SendDlg {
 	User *user;/* current user (must own a copy of user data from user list) */
 
-	GList *send_list;
+	GList *send_list;		/* SendEntry list */
+	GList *file_list;		/* shared file list */
 	GStaticMutex mutex;
 	gint timerId;
-	Message *msg;		/* the last recieved msg(must own a copy of recieved messge data) */
+	Message *msg;			/* the last recieved msg(must own a copy of recieved messge data) */
 	gchar *text;
 	gchar *fontName;
+
+	GtkWidget *rvbox;
+	GtkWidget *info_area_box;
+	GtkWidget *recv_file_box;
+	GtkWidget *recv_action_vbox;
+	GtkWidget *recv_action_hbox;
 	gboolean is_show_recv_file;
 	
-	/* main widget begin */
 	GtkWidget *dialog;
 	GtkWidget *head_icon;	/* head icon */
 	GtkWidget *photo_image;	/* photo image */
 	GtkWidget *state_label;	/* user state */
 	GtkWidget *name_label;	/* nick name */
+	GtkWidget *sign_label;	/* personal sign */
 	GtkWidget *info_label;	/* user info */
 	GtkWidget *recv_text;	/* message area */
 	GtkWidget *send_text;	/* input area */
@@ -84,31 +91,15 @@ struct _SendDlg {
 	GtkTextIter send_iter;
 	GtkTextIter recv_iter;
 
-	GtkWidget *rt_box;
-	GtkWidget *rb_box;
-	GtkWidget *rt_evbox;	/* GtkEventBox */
-	GtkWidget *rb_evbox;	/* GtkEventBox */
-	GtkWidget *rt_label;
-	GtkWidget *rb_label;
-	GtkWidget *photo_frame;
-	GtkWidget *recv_file_scroll;
 	GtkWidget *recv_file_tree;	/* file to recieve */
-	GtkWidget *recv_progress_box;
 	GtkWidget *recv_progress_bar;
-	GtkWidget *recv_file_text;	/* current recv file name */
-	GtkWidget *send_file_scroll;
+	ProgressInfo recv_progress;
+	GtkWidget *local_file_tree;
 	GtkWidget *send_file_tree;	/* file to send */
-	GtkWidget *send_progress_box;
 	GtkWidget *send_progress_bar;
-	GtkWidget *send_file_text;	/* current send file name */
-
-	/* toolbar begin */
-	GtkWidget *toolbar;
-	GtkWidget *change_font;
-	GtkWidget *send_emotion;
-	GtkWidget *send_image;
-	GtkWidget *send_file;
-	GtkWidget *send_folder;
+	ProgressInfo send_progress;
+	gboolean is_show_recv_progress;
+	gboolean is_show_send_progress;
 
 	GtkWidget *emotionDlg;
 };

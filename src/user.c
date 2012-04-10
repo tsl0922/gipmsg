@@ -35,8 +35,10 @@ static void fill_user_info(Message * msg, User * user)
 	STRDUP_WITH_CHECK(user->userName, msg_get_userName(msg));
 	STRDUP_WITH_CHECK(user->hostName, msg_get_hostName(msg));
 	STRDUP_WITH_CHECK(user->groupName, msg_get_groupName(msg));
-	STRDUP_WITH_CHECK(user->headIcon, ICON_PATH "icon_linux.png");
 	STRDUP_WITH_CHECK(user->encode, msg_get_encode(msg));
+	user->headIcon = NULL;
+	user->photoImage = NULL;
+	user->personalSign = NULL;
 }
 
 User *create_user(Message * msg)

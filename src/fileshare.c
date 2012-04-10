@@ -20,9 +20,7 @@
 
 #include "common.h"
 
-static GSList *file_list = NULL;
 static int file_id = 0;
-static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 
 typedef struct {
 	SendDlg *dlg;
@@ -55,7 +53,6 @@ typedef struct {
 	ulong size;
 	FileInfo *info;
 	ulong *pnfilesrecv;
-	SendDlg *dlg;
 } RecvDataEntry;
 
 typedef struct {
@@ -64,7 +61,6 @@ typedef struct {
 	char fname[MAX_FNAME];
 	FileInfo *info;
 	ulong *pnfilesend;
-	SendDlg *dlg;
 } SendDataEntry;
 
 static gpointer recv_file_thread(gpointer data);
@@ -110,7 +106,7 @@ static void setup_progress_info(ProgressInfo *ppinfo, FileInfo *info,
 }
 
 static void setup_recv_data_entry(RecvDataEntry *entry, int sock, int fd, 
-	char *fname, ulong size, FileInfo *info, ulong *pnfilesrecv,	SendDlg *dlg)
+	char *fname, ulong size, FileInfo *info, ulong *pnfilesrecv)
 {
 	entry->sock = sock;
 	entry->fd = fd;
@@ -118,67 +114,16 @@ static void setup_recv_data_entry(RecvDataEntry *entry, int sock, int fd,
 	entry->size = size;
 	entry->info = info;
 	entry->pnfilesrecv = pnfilesrecv;
-	entry->dlg= dlg;
 }
 
 static void setup_send_data_entry(SendDataEntry *entry, SOCKET sock,
-	char *path, char *fname, FileInfo *info, ulong *pnfilesend, SendDlg *dlg)
+	char *path, char *fname, FileInfo *info, ulong *pnfilesend)
 {
 	entry->sock = sock;
 	strcpy(entry->path, path);
 	strcpy(entry->fname, fname);
 	entry->info = info;
 	entry->pnfilesend = pnfilesend;
-	entry->dlg = dlg;
-}
-
-void add_file(FileInfo * info)
-{
-	g_static_mutex_lock(&mutex);
-	file_list = g_slist_append(file_list, info);
-	g_static_mutex_unlock(&mutex);
-}
-
-bool del_file(const char *path)
-{
-	GSList *entry = file_list;
-	FileInfo *info;
-	bool ret = false;
-
-	while (entry) {
-		info = (FileInfo *) entry->data;
-		if (!strcmp(info->path, path)) {
-			g_static_mutex_lock(&mutex);
-			FREE_WITH_CHECK(info);
-			file_list = g_slist_delete_link(file_list, entry);
-			g_static_mutex_unlock(&mutex);
-			ret = true;
-			break;
-		}
-		entry = entry->next;
-	}
-
-	return ret;
-}
-
-bool validate_request(RequestInfo * request, FileInfo ** info_p)
-{
-	GSList *entry = file_list;
-	FileInfo *file;
-	bool ret = false;
-
-	while (entry) {
-		file = (FileInfo *) entry->data;
-		if ((file->id == request->file_id)
-		    && (file->packet_no == request->packet_no)) {
-			*info_p = file;
-			ret = true;
-			break;
-		}
-		entry = entry->next;
-	}
-
-	return ret;
 }
 
 /*
@@ -232,9 +177,9 @@ void send_file_info(ulong toAddr, GSList * files)
   * example:
   *               1:AUTHORS:0:4f793031:101:15=4f793031:13=4f793031:\a:
   */
-GSList *parse_file_info(char *attach, packet_no_t packet_no)
+GList *parse_file_info(char *attach, packet_no_t packet_no)
 {
-	GSList *files = NULL;
+	GList *files = NULL;
 	FileInfo *file = NULL;
 	char *tok = NULL;
 	char *ptr = NULL;
@@ -283,7 +228,7 @@ process_file:
 		goto err_out;
 	}
 
-	files = g_slist_append(files, file);
+	files = g_list_append(files, file);
 	//ignore extend attr
 	tok = seprate_token(attach, FILELIST_SEPARATOR, &ptr);
 	if (ptr && *ptr != '\0') {
@@ -339,7 +284,7 @@ static bool send_request(SOCKET sock, FileInfo * info, User * user)
  * @param size data length max recieve.
  * @return length of recieved data
  */
-static ulong recv_file_data(RecvDataEntry *entry)
+static ulong recv_file_data(RecvDataEntry *entry, SendDlg *dlg)
 {
 	ulong max_n_recv = entry->size;
 	ulong total_n_recv = 0;
@@ -349,7 +294,8 @@ static ulong recv_file_data(RecvDataEntry *entry)
 	struct timeval tv1, tv2;
 	ulong speed = 0;
 	ProgressInfo pinfo;
-	
+
+	DEBUG_INFO("file size: %ld", max_n_recv);
 	/* recieve data */
 	while (max_n_recv) {
 		memset(buf, 0, MAX_TCPBUF);
@@ -362,11 +308,8 @@ static ulong recv_file_data(RecvDataEntry *entry)
 			break;
 		GET_CLOCK_COUNT(&tv2);
 		speed = total_n_recv/difftimeval(tv2,tv1);
-		setup_progress_info(&pinfo, entry->info, entry->fname, FILE_TS_DOING,
+		setup_progress_info(&dlg->recv_progress, entry->info, entry->fname, FILE_TS_DOING,
 			entry->size, total_n_recv, speed, *(entry->pnfilesrecv));
-		gdk_threads_enter();
-		update_recv_progress_bar(entry->dlg, &pinfo);
-		gdk_threads_leave();
 		max_n_recv -= n_recv;
 		total_n_recv += n_recv;
 	}
@@ -383,7 +326,6 @@ static ulong recv_regular_file(FileInfo * info, const char *path, SendDlg *dlg)
 	static ulong nfilerecv = 0;
 	struct timeval tv1, tv2;
 	ulong speed = 0;
-	ProgressInfo pinfo;
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		DEBUG_ERROR("can not create socket!");
@@ -394,11 +336,8 @@ static ulong recv_regular_file(FileInfo * info, const char *path, SendDlg *dlg)
 		CLOSE(sock);
 		return -1;
 	}
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_READY,
+	setup_progress_info(&dlg->recv_progress, info, info->name, FILE_TS_READY,
 		info->size, 0, 0, 0);
-	gdk_threads_enter();
-	update_recv_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 
 	/* create file */
 	DEBUG_INFO("save file: %s", path);
@@ -408,21 +347,18 @@ static ulong recv_regular_file(FileInfo * info, const char *path, SendDlg *dlg)
 	}
 	RecvDataEntry entry;
 	setup_recv_data_entry(&entry, sock, fd, info->name, info->size - info->offset,
-		info, &nfilerecv, dlg);
+		info, &nfilerecv);
 	/* recieve file data */
 	GET_CLOCK_COUNT(&tv1);
-	total_n_recv = recv_file_data(&entry);
+	total_n_recv = recv_file_data(&entry, dlg);
 	GET_CLOCK_COUNT(&tv2);
 	close(fd);
 	CLOSE(sock);
 
 	DEBUG_INFO("total recv size: %ld", total_n_recv);
 	speed = total_n_recv/difftimeval(tv2,tv1);
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH,
+	setup_progress_info(&dlg->recv_progress, info, info->name, FILE_TS_FINISH,
 		info->size, total_n_recv, speed, nfilerecv);
-	gdk_threads_enter();
-	update_recv_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 	
 	return total_n_recv;
 }
@@ -505,11 +441,8 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 		CLOSE(sock);
 		return -1;
 	}
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_READY,
+	setup_progress_info(&dlg->recv_progress, info, info->name, FILE_TS_READY,
 		info->size, 0, 0, 0);
-	gdk_threads_enter();
-	update_recv_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 
 	build_path(tpath, path, ".");
 	memset(buf, 0, MAX_TCPBUF);
@@ -558,9 +491,9 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 				}
 				RecvDataEntry entry;
 				setup_recv_data_entry(&entry, sock, fd, header.name, header.size,
-					info, &nfilerecv, dlg);
+					info, &nfilerecv);
 				// recieve file data
-				n_recv = recv_file_data(&entry);
+				n_recv = recv_file_data(&entry, dlg);
 				total_n_recv += n_recv;
 				close(fd);
 				continue;
@@ -573,11 +506,8 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 	CLOSE(sock);
 	DEBUG_INFO("total recv size: %ld", total_n_recv);
 	speed = total_n_recv/difftimeval(tv2,tv1);
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH, info->size,
+	setup_progress_info(&dlg->recv_progress, info, info->name, FILE_TS_FINISH, info->size,
 		total_n_recv, speed, nfilerecv);
-	gdk_threads_enter();
-	update_recv_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 	
 	return total_n_recv;
 }
@@ -613,7 +543,7 @@ static bool parse_request(const char *extend, RequestInfo * request)
 	return true;
 }
 
-static ulong send_file_data(SendDataEntry *entry)
+static ulong send_file_data(SendDataEntry *entry, SendDlg *dlg)
 {
 	int fd;
 	struct stat statbuf;
@@ -624,7 +554,6 @@ static ulong send_file_data(SendDataEntry *entry)
 	size_t n_read = 0;
 	struct timeval tv1, tv2;
 	ulong speed = 0;
-	ProgressInfo pinfo;
 
 	DEBUG_INFO("sending file: %s", entry->path);
 	stat(entry->path, &statbuf);
@@ -648,11 +577,9 @@ static ulong send_file_data(SendDataEntry *entry)
 		max_n_read -= n_read;
 		total_n_send += n_send;
 		speed = total_n_send/difftimeval(tv2,tv1);
-		setup_progress_info(&pinfo, entry->info, entry->fname, FILE_TS_DOING,
+		setup_progress_info(&dlg->send_progress, 
+			entry->info, entry->fname, FILE_TS_DOING,
 			statbuf.st_size, total_n_send, speed, *(entry->pnfilesend));
-		gdk_threads_enter();
-		update_send_progress_bar(entry->dlg, &pinfo);
-		gdk_threads_leave();
 	}
 	(*(entry->pnfilesend))++;
 	close(fd);
@@ -666,29 +593,22 @@ static ulong send_regular_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 	static ulong nfilesend = 0;
 	struct timeval tv1, tv2;
 	ulong speed = 0;
-	ProgressInfo pinfo;
 	SendDataEntry entry;
 
 	DEBUG_INFO("sending reagular file: %s(id: %d)", info->name, info->id);
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_DOING,
+	setup_progress_info(&dlg->send_progress, info, info->name, FILE_TS_DOING,
 		info->size, 0, 0, 0);
-	gdk_threads_enter();
-	update_send_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 	setup_send_data_entry(&entry, sock, info->path, info->name,
-		info, &nfilesend, dlg);
+		info, &nfilesend);
 	GET_CLOCK_COUNT(&tv1);
-	total_n_send = send_file_data(&entry);
+	total_n_send = send_file_data(&entry, dlg);
 	GET_CLOCK_COUNT(&tv2);
 	CLOSE(sock);
 
 	DEBUG_INFO("total send size: %ld", total_n_send);
 	speed = total_n_send/difftimeval(tv2,tv1);
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH,
+	setup_progress_info(&dlg->send_progress, info, info->name, FILE_TS_FINISH,
 		info->size, total_n_send, speed, nfilesend);
-	gdk_threads_enter();
-	update_send_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 	
 	return total_n_send;
 }
@@ -773,8 +693,8 @@ ulong send_dir_data(SOCKET sock, const char *path, const char *dirname,
 				goto err_out;
 			SendDataEntry entry;
 			setup_send_data_entry(&entry, sock, file_path, dentry->d_name,
-				info, pnfilesend, dlg);
-			total_n_send += send_file_data(&entry);
+				info, pnfilesend);
+			total_n_send += send_file_data(&entry, dlg);
 		}
 	}
 	//change to parent dir
@@ -798,13 +718,9 @@ static ulong send_dir_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 	static ulong nfilesend = 0;
 	struct timeval tv1, tv2;
 	ulong speed = 0;
-	ProgressInfo pinfo;
 
 	DEBUG_INFO("sending dir file: %s(id: %d)", info->name, info->id);
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_DOING, info->size, 0, 0, 0);
-	gdk_threads_enter();
-	update_send_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
+	setup_progress_info(&dlg->send_progress, info, info->name, FILE_TS_DOING, info->size, 0, 0, 0);
 	GET_CLOCK_COUNT(&tv1);
 	total_n_send = send_dir_data(sock, info->path, info->name, info, &nfilesend, dlg);
 	GET_CLOCK_COUNT(&tv2);
@@ -812,13 +728,28 @@ static ulong send_dir_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 
 	DEBUG_INFO("total send size: %ld", total_n_send);
 	speed = total_n_send/difftimeval(tv2,tv1);
-	setup_progress_info(&pinfo, info, info->name, FILE_TS_FINISH, info->size,
+	setup_progress_info(&dlg->send_progress, info, info->name, FILE_TS_FINISH, info->size,
 		total_n_send, speed, nfilesend);
-	gdk_threads_enter();
-	update_send_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 	
 	return total_n_send;
+}
+
+FileInfo *validate_request(RequestInfo * request, SendDlg *dlg)
+{
+	GList *entry = g_list_first(dlg->file_list);
+	FileInfo *file = NULL;
+
+	while (entry) {
+		FileInfo *tfile = (FileInfo *) entry->data;
+		if ((tfile->id == request->file_id)
+		    && (tfile->packet_no == request->packet_no)) {
+		    file = tfile;
+			break;
+		}
+		entry = entry->next;
+	}
+	
+	return file;
 }
 
 static gpointer process_request_thread(gpointer data)
@@ -843,25 +774,21 @@ static gpointer process_request_thread(gpointer data)
 		return;
 	dlg = send_dlg_open(user, &is_new);
 	if(is_new) active_dlg(dlg, false);
-	
 	memset(buffer, 0, MAX_TCPBUF);
 	if ((n_recv = RECV(client_sock, buffer, MAX_TCPBUF, 0)) <= 0) {
 		DEBUG_ERROR("recv error!");
 		return (gpointer) 0;
 	}
 	DEBUG_INFO("recieved packet(TCP):%s", buffer);
-	if (!(parse_message(ipaddr, &msg, buffer, n_recv)
-	      && parse_request(msg.message, &request)
-	      && validate_request(&request, &info))) {
-		DEBUG_INFO("invalid request!");
+	if(!parse_message(ipaddr, &msg, buffer, n_recv))
 		return (gpointer) 0;
-	}
+	if(!parse_request(msg.message, &request))
+		return (gpointer) 0;
+	if(!(info = validate_request(&request, dlg)))
+		return (gpointer) 0;
 	info->offset = request.offset;
 	setup_progress_info(&pinfo, info, info->name, FILE_TS_READY,
 		info->size, 0, 0, 0);
-	gdk_threads_enter();
-	update_send_progress_bar(dlg, &pinfo);
-	gdk_threads_leave();
 	switch (msg.commandNo) {
 	case IPMSG_GETFILEDATA:
 		{

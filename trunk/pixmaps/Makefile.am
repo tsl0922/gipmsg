@@ -10,8 +10,7 @@ icon_DATA = \
 	icons/image.png \
 	icons/file.png \
 	icons/folder.png \
-	icon.png \
-	icon-tray.png
+	icons/icon.png
 
 emotion_DATA = \
 	emotions/1.gif emotions/2.gif emotions/3.gif \

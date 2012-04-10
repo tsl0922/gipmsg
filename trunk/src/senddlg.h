@@ -26,7 +26,7 @@ bool is_same_packet(SendDlg * dlg, Message * msg);
 void senddlg_add_message(SendDlg * dlg, const char *msg, bool issendmsg);
 void senddlg_add_info(SendDlg * dlg, const char *msg);
 bool notify_send_finish(SendDlg * dlg, ulong ipaddr, packet_no_t packet_no);
-void senddlg_add_fileattach(SendDlg * dlg, GSList * files);
+void senddlg_add_fileattach(SendDlg * dlg, GList * files);
 void update_send_progress_bar(SendDlg *dlg, ProgressInfo *ppinfo);
 void update_recv_progress_bar(SendDlg *dlg, ProgressInfo *ppinfo);
 

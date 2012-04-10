@@ -125,7 +125,7 @@ typedef struct {
 	ulong ssize;				/* size of file in transfer */
 	ulong tsize;				/* transfered size */
 	ulong speed;				/* bytes transfered per second */
-	ulong ntrans;						/* transferd file num */
+	ulong ntrans;				/* transferd file num */
 }ProgressInfo;
 
 

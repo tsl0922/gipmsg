@@ -146,6 +146,7 @@ GtkWidget *create_menu_item(const char *name, const char *iconpath,
 
 static void on_menu_exit(GtkMenuItem * menu_item, gpointer data)
 {
+	ipmsg_send_br_exit();
 	gtk_main_quit();
 }
 
@@ -521,7 +522,7 @@ user_tree_add_user0(GtkTreeModel * model, GtkTreeIter * parent, User * user)
 	gchar *info;
 	char *addr_str;
 
-	cpixbuf = gdk_pixbuf_new_from_file(user->headIcon, NULL);
+	cpixbuf = gdk_pixbuf_new_from_file(ICON_PATH "icon_linux.png", NULL);
 	opixbuf = GDK_PIXBUF(g_object_ref(G_OBJECT(cpixbuf)));
 	addr_str = get_addr_str(user->ipaddr);
 	info =
@@ -884,11 +885,11 @@ void notify_sendmsg(Message * msg)
 	main_win.dlg = send_dlg_open(main_win.user, &is_new);
 	if (!is_new && is_same_packet(main_win.dlg, msg))
 		return;
-	main_win.dlg->msg = dup_message(msg);
+	main_win.dlg->msg = (Message *)dup_message(msg);
 	if (isFileAttach) {
-		GSList *files = parse_file_info(msg->attach, msg->packetNo);
+		GList *files = parse_file_info(msg->attach, msg->packetNo);
 		senddlg_add_fileattach(main_win.dlg, files);
-		g_slist_free(files);
+		g_list_free(files);
 	} else
 		senddlg_add_message(main_win.dlg, msg->message, false);
 	if (is_new) {

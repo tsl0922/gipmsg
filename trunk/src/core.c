@@ -372,6 +372,28 @@ void ipmsg_send_br_entry()
 
 void ipmsg_send_br_exit()
 {
+	char packet[MAX_UDPBUF];
+	size_t packet_len;
+	packet_no_t packet_no;
+	AddrInfo *info;
+	int info_len, i;
+
+	build_packet(packet, IPMSG_BR_EXIT, NULL, NULL, 
+		&packet_len, &packet_no);
+	info = get_sys_addr_info(&info_len);
+	if (info) {
+		for (i = 0; i < info_len; i++) {
+			struct sockaddr_in sockaddr;
+			if (info[i].br_addr == 0 && info_len > 1)
+				continue;
+			setup_sockaddr(&sockaddr, info[i].br_addr,
+				       config_get_port());
+			SENDTO(udp_sock, packet, packet_len, 0,
+			       (const struct sockaddr *)&sockaddr,
+			       sizeof(sockaddr));
+		}
+	}
+	FREE_WITH_CHECK(info);
 }
 
 void ipmsg_send_ansentry(ulong toAddr)

@@ -38,6 +38,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <iconv.h>
+#include <wchar.h>
 
 #ifdef _LINUX
 #include <sys/socket.h>
@@ -79,6 +81,7 @@
 #include "ipmsg.h"
 #include "ipmsg-types.h"
 #include "util.h"
+#include "codeset.h"
 #include "myconfig.h"
 #include "user.h"
 #include "core.h"

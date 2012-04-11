@@ -111,6 +111,7 @@ void print_user(User * user)
 	printf("\tuserName: %s\n", user->userName);
 	printf("\thostName: %s\n", user->hostName);
 	printf("\tgroupName: %s\n", user->groupName);
+	printf("\tencode: %s\n", user->encode);
 	printf("****************\n");
 	FREE_WITH_CHECK(addr_str);
 }

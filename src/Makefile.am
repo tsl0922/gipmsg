@@ -11,6 +11,7 @@ gipmsg_SOURCES = \
 	common.h \
 	debug.c debug.h \
 	util.c util.h \
+	codeset.c codeset.h \
 	myconfig.c myconfig.h \
 	message.c message.h \
 	core.c core.h \

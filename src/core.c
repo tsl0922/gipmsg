@@ -85,6 +85,44 @@ bool socket_init(const char *pAddr, int nPort)
 	return true;
 }
 
+static char *check_encode(char *buf, size_t buf_len, 
+	char *fencode, char **encode_p, size_t *len_p)
+{
+#define NULL_OBJECT 0x02
+	char *ptr;
+	char *outstr;
+	char *encode;
+	size_t size;
+
+	/* replace NULL terminator('\0') with ASCII character */
+	ptr = buf + strlen(buf) + 1;
+	while ((size_t)(ptr - buf) <= buf_len) {
+		*(ptr - 1) = NULL_OBJECT;
+		ptr += strlen(ptr) + 1;
+		DEBUG_INFO("%s", ptr);
+	}
+	if(fencode && strcasecmp("utf-8", fencode)
+		&& (outstr = convert_encode("utf-8", fencode, buf, buf_len))) {
+		encode = strdup(fencode);
+	}
+	if(!outstr) {
+		outstr = string_validate(buf, buf_len, 
+			(const char *)config_get_candidate_encode(), &encode);
+	}
+	size = strlen(outstr);
+
+	/* restore ASCII character  to NULL terminator('\0')r */
+	ptr = outstr;
+	while ((ptr = (char *)memchr(ptr, NULL_OBJECT, outstr + size - ptr))) {
+		*ptr = '\0';
+		ptr++;
+	}
+	*len_p = size;
+	*encode_p = encode;
+
+	return outstr;
+}
+
 static gpointer udp_server_thread(gpointer data)
 {
 	char buffer[MAX_UDPBUF];
@@ -96,19 +134,23 @@ static gpointer udp_server_thread(gpointer data)
 	addr_len = sizeof(struct sockaddr_in);
 	while (1) {
 		Message msg;
+		char *tstring;
+		size_t len;
 
 		if ((bytesRecieved = RECVFROM(udp_sock, buffer, MAX_UDPBUF,
 					      0, (struct sockaddr *)&addr,
 					      &addr_len)) <= 0)
 			continue;
-		memset(&msg, 0, sizeof(Message));
 		DEBUG_INFO("recieved packet:%s", buffer);
+		tstring = check_encode(buffer, bytesRecieved, 
+			config_get_default_encode(), &msg.encode, &len);
+		
 		if (parse_message
-		    (addr.sin_addr.s_addr, &msg, (const char *)buffer,
-		     bytesRecieved)) {
+		    (addr.sin_addr.s_addr, &msg, (const char *)tstring, len)) {
 			ipmsg_dispatch_message(udp_sock, &msg);
 			free_message_data(&msg);
 		}
+		FREE_WITH_CHECK(tstring);
 	}
 	return (gpointer) 0;
 }

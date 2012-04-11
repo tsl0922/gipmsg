@@ -24,7 +24,7 @@
 bool setup_file_info(FileInfo * info, const char *path);
 void add_file(FileInfo * info);
 bool del_file(const char *path);
-void send_file_info(ulong toAddr, GSList * files);
+void send_file_info(User  *user, GSList * files);
 GList *parse_file_info(char *attach, packet_no_t packet_no);
 void tcp_request_entry(SOCKET client_sock, ulong ipaddr);
 void recv_file_entry(FileInfo * info, const char *path, SendDlg *dlg);

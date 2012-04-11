@@ -42,9 +42,7 @@ int config_get_port();
 
 char *config_get_nickname();
 char *config_get_groupname();
-
-command_no_t config_get_normal_send_flags();
-command_no_t config_get_normal_entry_flags();
+char *config_get_default_encode();
 
 extern Config config;
 #endif

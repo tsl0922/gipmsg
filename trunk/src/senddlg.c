@@ -192,7 +192,14 @@ bool is_same_packet(SendDlg * dlg, Message * msg)
 static void make_packet(SendEntry * entry)
 {
 	packet_no_t packet_no;
+	char *tmsg;
 
+	tmsg = convert_encode(entry->user->encode, "utf-8", 
+			entry->msg, strlen(entry->msg));
+	if(tmsg) {
+		FREE_WITH_CHECK(entry->msg);
+		entry->msg = tmsg;
+	}
 	build_packet(entry->packet, entry->command, entry->msg,
 		     NULL, &entry->packet_len, &entry->packet_no);
 	entry->status = ST_SENDMSG;
@@ -232,7 +239,7 @@ static void send_file_attach_info(SendDlg * dlg)
 	} while (gtk_tree_model_iter_next(model, &iter));
 
 	if (files)
-		send_file_info(dlg->user->ipaddr, files);
+		send_file_info(dlg->user, files);
 	gtk_list_store_clear(GTK_LIST_STORE(model));
 	snprintf(buf, MAX_BUF,
 		 "You request send %d files, %d folders(total: %d) to %s.",

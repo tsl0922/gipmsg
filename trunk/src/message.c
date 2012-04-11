@@ -72,7 +72,7 @@ parse_message(ulong fromAddr, Message * msg, const char *msg_buf,
 	/* message */
 	tok = seprate_token(msg_buf, IPMSG_MSG_EXT_DELIM, &ptr);
 	msg->message = strdup(tok);
-
+	
 	/* extra data */
 	if (ptr && (ptr - msg_buf < buf_len)) {
 		if (*ptr == ':')
@@ -103,7 +103,7 @@ build_packet(char *packet_p, const command_no_t command, const char *message,
 	if (!packet_p || !len_p || !packet_no_p)
 		return;
 
-	common = (char *)malloc(MAX_UDPBUF);
+	common = (char *)malloc(MAX_BUF);
 
 	/* generate packet no */
 	++packet_no;
@@ -115,25 +115,14 @@ build_packet(char *packet_p, const command_no_t command, const char *message,
 	/* senderhost: hostname */
 	sender_host = get_sys_host_name();
 
-	len = 0;
-
-	len += snprintf(common, MAX_UDPBUF, IPMSG_COMMON_MSG_FMT,
+	snprintf(common, MAX_BUF, IPMSG_COMMON_MSG_FMT,
 			this_packet_no, sender_name, sender_host, command);
 
-	if (message) {
-		len += (strlen(message) + 1);
-	}
-	if (attach) {
-		len += (strlen(attach) + 1);
-	}
-
-	memset(packet_p, 0, len);
-	*len_p = snprintf(packet_p, len, IPMSG_ALLMSG_PACKET_FMT,
+	*len_p = sprintf(packet_p, IPMSG_ALLMSG_PACKET_FMT,
 			  common,
 			  (message != NULL) ? message : "",
 			  IPMSG_MSG_EXT_DELIM, (attach != NULL) ? attach : "");
 
-	*len_p = len;
 	*packet_no_p = this_packet_no;
 
 	FREE_WITH_CHECK(sender_name);
@@ -149,6 +138,7 @@ void free_message_data(Message * msg)
 		FREE_WITH_CHECK(msg->hostName);
 		FREE_WITH_CHECK(msg->message);
 		FREE_WITH_CHECK(msg->attach);
+		FREE_WITH_CHECK(msg->encode);
 	}
 }
 
@@ -162,6 +152,7 @@ Message *dup_message(Message * src)
 	STRDUP_WITH_CHECK(new_msg->hostName, src->hostName);
 	STRDUP_WITH_CHECK(new_msg->message, src->message);
 	STRDUP_WITH_CHECK(new_msg->attach, src->attach);
+	STRDUP_WITH_CHECK(new_msg->encode, src->encode);
 
 	return new_msg;
 }
@@ -211,5 +202,6 @@ char *msg_get_encode(const Message * msg)
 	if (msg->commandOpts & IPMSG_UTF8OPT) {
 		return "utf-8";
 	}
-	return IPMSG_UNKNOWN_NAME;
+	
+	return msg->encode;
 }

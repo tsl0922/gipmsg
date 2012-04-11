@@ -59,12 +59,12 @@ char *config_get_groupname()
 	return "gipmsg";
 }
 
-command_no_t config_get_normal_send_flags()
+char *config_get_default_encode()
 {
-	return IPMSG_SENDCHECKOPT;
+	return "utf-8";
 }
 
-command_no_t config_get_normal_entry_flags()
+char *config_get_candidate_encode()
 {
-	return 0;
+	return "gb18030,big5";
 }

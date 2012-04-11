@@ -63,6 +63,7 @@ typedef struct {
 	char *message;		/* message */
 	char *attach;		/* attachment(file info...) */
 	ulong fromAddr;		/* from ipaddr */
+	char *encode;		/* msg encode */
 } Message;
 
 /* Message Definitions end  */

@@ -133,7 +133,7 @@ static void setup_send_data_entry(SendDataEntry *entry, SOCKET sock,
   * (size, mtime, and fileattr describe hex format. If a filename contains ':', please replace with "::".)
   *
   */
-void send_file_info(ulong toAddr, GSList * files)
+void send_file_info(User  *user, GSList * files)
 {
 	GSList *entry = files;
 	FileInfo *info;
@@ -143,6 +143,7 @@ void send_file_info(ulong toAddr, GSList * files)
 	char attach[MAX_UDPBUF];
 	char *ptr;
 	size_t len = 0;
+	char *tattach;
 
 	ptr = attach;
 	while (entry) {
@@ -156,10 +157,16 @@ void send_file_info(ulong toAddr, GSList * files)
 		ptr = attach + len;
 		entry = entry->next;
 	};
+
+	tattach = convert_encode(user->encode, "utf-8", attach, strlen(attach));
+	if(!tattach) {
+		tattach = strdup(attach);
+	}
 	build_packet(packet,
 		     IPMSG_SENDMSG | IPMSG_FILEATTACHOPT | IPMSG_SENDCHECKOPT,
-		     NULL, attach, &packet_len, &packet_no);
-	ipmsg_send_packet(toAddr, packet, packet_len);
+		     NULL, tattach, &packet_len, &packet_no);
+	ipmsg_send_packet(user->ipaddr, packet, packet_len);
+	FREE_WITH_CHECK(tattach);
 
 	//set packet_no
 	entry = files;

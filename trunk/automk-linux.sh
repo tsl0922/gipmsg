@@ -31,7 +31,7 @@ fi
 
 echo
 echo Running configure...
-./configure --disable-static $1
+./configure --prefix=/usr $1
 
 if [ -f "Makefile" ]; then
   echo

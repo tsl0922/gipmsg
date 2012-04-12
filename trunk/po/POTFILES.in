@@ -1,3 +1,6 @@
 # List of source files containing translatable strings.
 
 src/main.c
+src/mainwin.c
+src/senddlg.c
+src/emotion.c

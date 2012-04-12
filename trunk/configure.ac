@@ -76,7 +76,7 @@ AC_TYPE_SSIZE_T
 
 # Checks for library functions.
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([inet_ntoa memset mkdir setlocale socket strchr strdup strerror strndup strrchr strtol])
+AC_CHECK_FUNCS([inet_ntoa memchr memset mkdir setlocale socket strcasecmp strchr strdup strerror strndup strpbrk strrchr strspn strtol])
 
 # Gettext stuff.
 IT_PROG_INTLTOOL([0.40.0])

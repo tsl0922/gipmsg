@@ -498,12 +498,12 @@ static GtkWidget *create_send_action_area(SendDlg *dlg)
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_add(GTK_CONTAINER(halign), hbox);
 	
-	button = gtk_button_new_with_label("Close");
+	button = gtk_button_new_with_label(_("Close"));
 	gtk_widget_set_size_request(button, 100, 30);
 	gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, TRUE, 2);
 	g_signal_connect(button, "clicked", G_CALLBACK(on_close_clicked), dlg);
 
-	button = gtk_button_new_with_label("Send");
+	button = gtk_button_new_with_label(_("Send"));
 	gtk_widget_set_size_request(button, 100, 30);
 	gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, TRUE, 2);
 	g_signal_connect(button, "clicked", G_CALLBACK(on_send_clicked), dlg);
@@ -519,11 +519,11 @@ static GtkWidget *create_info_area(SendDlg * dlg)
 
 	vbox = gtk_vbox_new(FALSE, 0);
 	dlg->info_area_box = vbox;
-	frame = gtk_frame_new("User Information");
+	frame = gtk_frame_new(_("User Information"));
 	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);
 	dlg->info_label = gtk_label_new(NULL);
 	gtk_container_add(GTK_CONTAINER(frame), dlg->info_label);
-	frame = gtk_frame_new("User Photo");
+	frame = gtk_frame_new(_("User Photo"));
 	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);
 	gtk_frame_set_shadow_type(GTK_FRAME(frame),
 				  GTK_SHADOW_ETCHED_IN);
@@ -558,7 +558,7 @@ static GtkWidget *create_send_file_tree()
 
 	/* create column */
 	renderer = gtk_cell_renderer_pixbuf_new();
-	column = gtk_tree_view_column_new_with_attributes("Name",
+	column = gtk_tree_view_column_new_with_attributes(_("Name"),
 							  renderer, "pixbuf",
 							  SF_COL_ICON, NULL);
 	renderer = gtk_cell_renderer_text_new();
@@ -568,19 +568,19 @@ static GtkWidget *create_send_file_tree()
 	gtk_tree_view_append_column(GTK_TREE_VIEW(send_tree), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Type",
+	column = gtk_tree_view_column_new_with_attributes(_("Type"),
 							  renderer, "text",
 							  SF_COL_TYPE, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(send_tree), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Size",
+	column = gtk_tree_view_column_new_with_attributes(_("Size"),
 							  renderer, "text",
 							  SF_COL_SIZE, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(send_tree), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Path",
+	column = gtk_tree_view_column_new_with_attributes(_("Path"),
 							  renderer, "text",
 							  SF_COL_PATH, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(send_tree), column);
@@ -641,7 +641,7 @@ static void update_send_file_tree(GFile * file, SendDlg *dlg)
 			   SF_COL_ICON, pixbuf,
 			   SF_COL_NAME, info->name,
 			   SF_COL_TYPE,
-			   (info->attr & IPMSG_FILE_DIR) ? "folder" : "file",
+			   (info->attr & IPMSG_FILE_DIR) ? _("folder") : _("file"),
 			   SF_COL_SIZE, filesize, SF_COL_PATH, info->path,
 			   SF_COL_INFO, info, -1);
 	dlg->file_list = g_list_append(dlg->file_list, info);
@@ -653,7 +653,7 @@ static void on_send_file_clicked(GtkWidget * widget, SendDlg *dlg)
 {
 	GtkWidget *dialog;
 
-	dialog = gtk_file_chooser_dialog_new("Select file",
+	dialog = gtk_file_chooser_dialog_new(_("Select file"),
 					     GTK_WINDOW(dlg->dialog),
 					     GTK_FILE_CHOOSER_ACTION_OPEN,
 					     GTK_STOCK_CANCEL,
@@ -674,7 +674,7 @@ static void on_send_folder_clicked(GtkWidget * widget, SendDlg *dlg)
 {
 	GtkWidget *dialog;
 
-	dialog = gtk_file_chooser_dialog_new("Select file",
+	dialog = gtk_file_chooser_dialog_new(_("Select folder"),
 					     GTK_WINDOW(dlg->dialog),
 					     GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
 					     GTK_STOCK_CANCEL,
@@ -755,19 +755,19 @@ static GtkWidget *create_send_file_action_area(SendDlg *dlg)
 
 	hbox = gtk_hbox_new(FALSE, 0);
 	label = gtk_label_new(NULL);
-	gtk_label_set_markup(GTK_LABEL(label), "<span font='bold 8'>Send File</span>");
+	gtk_label_set_markup(GTK_LABEL(label), _("<span font='bold 8'>Send File</span>"));
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Cancel", (ButtonFunc)on_cancel_file_clicked, dlg), 
+		create_button(_("Cancel"), (ButtonFunc)on_cancel_file_clicked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("File", (ButtonFunc)on_send_file_clicked, dlg), 
+		create_button(_("File"), (ButtonFunc)on_send_file_clicked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Folder", (ButtonFunc)on_send_folder_clicked, dlg), 
+		create_button(_("Folder"), (ButtonFunc)on_send_folder_clicked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Monitor", (ButtonFunc)on_monitor_clicked, dlg), 
+		create_button(_("Monitor"), (ButtonFunc)on_monitor_clicked, dlg), 
 		FALSE, FALSE, 0);
 
 	return hbox;
@@ -803,7 +803,7 @@ get_save_path(GtkWindow *parent)
 	GtkWidget *dialog;
 	gchar *save_path = NULL;
 	
-	dialog = gtk_file_chooser_dialog_new("Select Save Path",
+	dialog = gtk_file_chooser_dialog_new(_("Select Save Path"),
 					     parent,
 					     GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
 					     GTK_STOCK_CANCEL,
@@ -942,13 +942,13 @@ on_recv_tree_menu_popup(GtkWidget * treeview, GdkEventButton * event, SendDlg *d
 	gtk_tree_path_free(path);
 
 	menu = gtk_menu_new();
-	create_menu_item("Accept", NULL, menu, TRUE,
+	create_menu_item(_("Accept"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_recv_menu_accept, dlg);
-	create_menu_item("Refuse", NULL, menu, TRUE,
+	create_menu_item(_("Refuse"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_recv_menu_refuse, dlg);
-	create_menu_item("Accept All", NULL, menu, TRUE,
+	create_menu_item(_("Accept All"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_recv_menu_accept_all, dlg);
-	create_menu_item("Refuse All", NULL, menu, TRUE,
+	create_menu_item(_("Refuse All"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_recv_menu_refuse_all, dlg);
 	gtk_widget_show_all(menu);
 	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
@@ -996,7 +996,7 @@ static GtkWidget *create_recv_file_tree()
 			GTK_TREE_VIEW_GRID_LINES_HORIZONTAL);
 	/* create column */
 	renderer = gtk_cell_renderer_pixbuf_new();
-	column = gtk_tree_view_column_new_with_attributes("Name",
+	column = gtk_tree_view_column_new_with_attributes(_("Name"),
 							  renderer, "pixbuf",
 							  RF_COL_ICON, NULL);
 	renderer = gtk_cell_renderer_text_new();
@@ -1006,25 +1006,25 @@ static GtkWidget *create_recv_file_tree()
 	gtk_tree_view_append_column(GTK_TREE_VIEW(recv_tree), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Type",
+	column = gtk_tree_view_column_new_with_attributes(_("Type"),
 							  renderer, "text",
 							  RF_COL_TYPE, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(recv_tree), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Size",
+	column = gtk_tree_view_column_new_with_attributes(_("Size"),
 							  renderer, "text",
 							  RF_COL_SIZE, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(recv_tree), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Save Path",
+	column = gtk_tree_view_column_new_with_attributes(_("Save Path"),
 							  renderer, "text",
 							  RF_COL_PATH, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(recv_tree), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Recieved Time",
+	column = gtk_tree_view_column_new_with_attributes(_("Recieved Time"),
 							  renderer, "text",
 							  RF_COL_TIME, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(recv_tree), column);
@@ -1064,10 +1064,10 @@ static GtkWidget *create_recv_action_area(SendDlg *dlg)
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 	label = gtk_label_new(NULL);
-	gtk_label_set_markup(GTK_LABEL(label), "<span font='bold 8'>Recieve File</span>");
+	gtk_label_set_markup(GTK_LABEL(label), _("<span font='bold 8'>Recieve File</span>"));
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Cancel Transfer", (ButtonFunc)NULL, NULL), 
+		create_button(_("Cancel Transfer"), (ButtonFunc)NULL, NULL), 
 		FALSE, FALSE, 0);
 	
 	hbox = gtk_hbox_new(FALSE, 0);
@@ -1075,16 +1075,16 @@ static GtkWidget *create_recv_action_area(SendDlg *dlg)
 	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 	
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Refuse", (ButtonFunc)on_refuse_cilcked, dlg), 
+		create_button(_("Refuse"), (ButtonFunc)on_refuse_cilcked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Accept", (ButtonFunc)on_accept_cilcked, dlg), 
+		create_button(_("Accept"), (ButtonFunc)on_accept_cilcked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Refuse All", (ButtonFunc)on_refuse_all_clicked, dlg), 
+		create_button(_("Refuse All"), (ButtonFunc)on_refuse_all_clicked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Accept All", (ButtonFunc)on_accept_all_clicked, dlg), 
+		create_button(_("Accept All"), (ButtonFunc)on_accept_all_clicked, dlg), 
 		FALSE, FALSE, 0);
 
 	return vbox;
@@ -1115,16 +1115,16 @@ static GtkWidget *create_local_action_area(SendDlg *dlg)
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 	label = gtk_label_new(NULL);
-	gtk_label_set_markup(GTK_LABEL(label), "<span font='bold 8'>Recieved File</span>");
+	gtk_label_set_markup(GTK_LABEL(label), _("<span font='bold 8'>Recieved File</span>"));
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Close", (ButtonFunc)on_close_recv_box_clicked, dlg), 
+		create_button(_("Close"), (ButtonFunc)on_close_recv_box_clicked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Open", (ButtonFunc)on_local_open_clicked, dlg), 
+		create_button(_("Open"), (ButtonFunc)on_local_open_clicked, dlg), 
 		FALSE, FALSE, 0);
 	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button("Folder", (ButtonFunc)on_local_folder_clicked, dlg), 
+		create_button(_("Folder"), (ButtonFunc)on_local_folder_clicked, dlg), 
 		FALSE, FALSE, 0);
 
 	return vbox;
@@ -1346,18 +1346,18 @@ static void update_dlg_info(SendDlg * dlg)
 
 	addr_str = get_addr_str(dlg->user->ipaddr);
 	title =
-	    g_strdup_printf("Chating with %s(IP: %s)", dlg->user->nickName,
+	    g_strdup_printf(_("Chating with %s(IP: %s)"), dlg->user->nickName,
 			    addr_str);
 	if(dlg->user->personalSign) {
 		sign = g_strdup_printf("<i>%s</i>", dlg->user->personalSign);
 	}
 	else {
-		sign = g_strdup_printf("<i>%s</i>", "No personal sign yet.");
+		sign = g_strdup_printf("<i>%s</i>", _("No personal sign yet."));
 	}
 	name = g_strdup_printf("<b>%s</b>(%s) %s", dlg->user->nickName,
 		dlg->user->hostName, addr_str);
-	info = g_strdup_printf("<i>NickName</i>  :%s\n<i>HostName</i>  :%s\n"
-		"<i>LoginName</i> :%s\n<i>GroupName</i>:%s\n<i>IPAddress</i>    :%s",
+	info = g_strdup_printf(_("<i>NickName</i>  :%s\n<i>HostName</i>  :%s\n"
+		"<i>LoginName</i> :%s\n<i>GroupName</i>:%s\n<i>IPAddress</i>    :%s"),
 			       dlg->user->nickName, dlg->user->hostName,
 			       dlg->user->userName, dlg->user->groupName, addr_str);
 	FREE_WITH_CHECK(addr_str);
@@ -1381,7 +1381,7 @@ static void update_dlg_info(SendDlg * dlg)
 	gtk_label_set_markup(GTK_LABEL(dlg->sign_label), sign);
 	gtk_label_set_markup(GTK_LABEL(dlg->name_label), name);
 	gtk_label_set_markup(GTK_LABEL(dlg->info_label), info);
-	gtk_label_set_markup(GTK_LABEL(dlg->state_label), "(online)");
+	gtk_label_set_markup(GTK_LABEL(dlg->state_label), _("(online)"));
 
 	g_free(sign);
 	g_free(title);
@@ -1419,7 +1419,7 @@ static void update_recv_file_tree(GtkWidget * recv_file_tree, GList * files)
 		gtk_list_store_set(GTK_LIST_STORE(model), &iter,
 				   RF_COL_ICON, pixbuf,
 				   RF_COL_NAME, info->name,
-				   RF_COL_TYPE, is_folder ? "folder" : "file",
+				   RF_COL_TYPE, is_folder ? _("folder") : _("file"),
 				   RF_COL_SIZE, filesize,
 				   RF_COL_PATH, "",
 				   RF_COL_TIME, time,
@@ -1464,7 +1464,7 @@ static gboolean update_progress_bar(SendDlg *dlg)
 	switch(dlg->recv_progress.tstatus) {
 	case FILE_TS_READY:
 	{
-		snprintf(buf, MAX_BUF, "Recieve file %s", dlg->recv_progress.fname);
+		snprintf(buf, MAX_BUF, _("Recieve file %s"), dlg->recv_progress.fname);
 		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->recv_progress_bar), buf);
 		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dlg->recv_progress_bar),0);
 		show_recv_progress_bar(dlg, TRUE);
@@ -1499,11 +1499,11 @@ static gboolean update_progress_bar(SendDlg *dlg)
 		show_recv_progress_bar(dlg, FALSE);
 		
 		if(dlg->recv_progress.info->attr & IPMSG_FILE_DIR) {
-			snprintf(buf, MAX_BUF, "Folder %s recieve finish! recieved size: %s, average speed %s/s",
+			snprintf(buf, MAX_BUF, _("Folder %s recieve finish! recieved size: %s, average speed %s/s"),
 				dlg->recv_progress.info->name, recvsize, speed);
 		}
 		else {
-			snprintf(buf, MAX_BUF, "File %s recieve finish! recieved size: %s, average speed %s/s",
+			snprintf(buf, MAX_BUF, _("File %s recieve finish! recieved size: %s, average speed %s/s"),
 				dlg->recv_progress.info->name, recvsize, speed);
 		}
 		
@@ -1557,8 +1557,8 @@ bool notify_send_finish(SendDlg * dlg, ulong ipaddr, packet_no_t packet_no)
 void senddlg_add_fileattach(SendDlg * dlg, GList * files)
 {
 	char buf[MAX_BUF];
-	snprintf(buf, MAX_BUF, "%s request send %d files(folders) to you,"
-		 "please recieve at the right.",
+	snprintf(buf, MAX_BUF, _("%s request send %d files(folders) to you,"
+		 "please recieve at the right."),
 		 dlg->user->nickName, g_list_length(files));
 	senddlg_add_info(dlg, buf);
 	update_recv_file_tree(dlg->recv_file_tree, files);

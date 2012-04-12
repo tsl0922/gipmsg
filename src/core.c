@@ -99,7 +99,6 @@ static char *check_encode(char *buf, size_t buf_len,
 	while ((size_t)(ptr - buf) <= buf_len) {
 		*(ptr - 1) = NULL_OBJECT;
 		ptr += strlen(ptr) + 1;
-		DEBUG_INFO("%s", ptr);
 	}
 	if(fencode && strcasecmp("utf-8", fencode)
 		&& (outstr = convert_encode("utf-8", fencode, buf, buf_len))) {
@@ -111,7 +110,7 @@ static char *check_encode(char *buf, size_t buf_len,
 	}
 	size = strlen(outstr);
 
-	/* restore ASCII character  to NULL terminator('\0')r */
+	/* restore ASCII character  to NULL terminator('\0') */
 	ptr = outstr;
 	while ((ptr = (char *)memchr(ptr, NULL_OBJECT, outstr + size - ptr))) {
 		*ptr = '\0';

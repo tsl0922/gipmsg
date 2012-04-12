@@ -20,8 +20,8 @@
 
 #include "common.h"
 
-#define GROUP_FRIEND "My Friends"
-#define GROUP_MYSELF "Myself"
+#define GROUP_FRIEND _("My Friends")
+#define GROUP_MYSELF _("Myself")
 
 enum {
 	EXPANDER_CLOSED,
@@ -157,7 +157,7 @@ statusicon_popup_menu(GtkStatusIcon * statusicon, guint button,
 	GtkWidget *menu;
 
 	menu = gtk_menu_new();
-	create_menu_item("Exit", NULL, menu, TRUE,
+	create_menu_item(_("Exit"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_menu_exit, NULL);
 	gtk_widget_show_all(menu);
 
@@ -246,9 +246,9 @@ static gboolean on_user_tree_menu_popup(GtkWidget * treeview, GdkEventButton * e
 	gtk_tree_path_free(path);
 
 	menu = gtk_menu_new();
-	create_menu_item("Send Message", NULL, menu, TRUE,
+	create_menu_item(_("Send Message"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_menu_send_message, users);
-	create_menu_item("Refresh", NULL, menu, TRUE,
+	create_menu_item(_("Refresh"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_menu_refresh, NULL);
 	gtk_widget_show_all(menu);
 	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,

@@ -26,9 +26,10 @@
 #else
 #define HOME_PATH            "./"
 #endif
+#define LOCALE_PATH          "/usr/share/locale"
+
 #define CONFIG_FILE_PATH     "~/.config/ichat/config.ini"
 #define ICON_PATH            HOME_PATH "icons/"
-#define LOCALE_PATH          HOME_PATH "locales/"
 #define EMOTION_PATH         HOME_PATH "emotions/"
 
 typedef struct {

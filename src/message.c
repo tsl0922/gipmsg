@@ -115,14 +115,18 @@ build_packet(char *packet_p, const command_no_t command, const char *message,
 	/* senderhost: hostname */
 	sender_host = get_sys_host_name();
 
-	snprintf(common, MAX_BUF, IPMSG_COMMON_MSG_FMT,
+	len = snprintf(common, MAX_BUF, IPMSG_COMMON_MSG_FMT,
 			this_packet_no, sender_name, sender_host, command);
 
-	*len_p = sprintf(packet_p, IPMSG_ALLMSG_PACKET_FMT,
+	len++;
+	
+	len += sprintf(packet_p, IPMSG_ALLMSG_PACKET_FMT,
 			  common,
 			  (message != NULL) ? message : "",
 			  IPMSG_MSG_EXT_DELIM, (attach != NULL) ? attach : "");
+	len++;
 
+	*len_p = len;
 	*packet_no_p = this_packet_no;
 
 	FREE_WITH_CHECK(sender_name);

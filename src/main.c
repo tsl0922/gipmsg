@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_NLS
 	setlocale(LC_ALL, "");
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-	bindtextdomain(GETTEXT_PACKAGE, NULL);
+	bindtextdomain(GETTEXT_PACKAGE, LOCALE_PATH);
 	textdomain(GETTEXT_PACKAGE);
 #endif
 
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 		GtkWidget *dialog =
 		    gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
 					   GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-					   "FATAL ERROR!!\n\nCan not bind TCP/UDP port(2425), is it in use?");
+					   _("FATAL ERROR!!\n\nCan not bind TCP/UDP port(2425), is it in use?"));
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
 		exit(EXIT_FAILURE);

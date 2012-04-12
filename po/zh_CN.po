@@ -1,0 +1,499 @@
+# Copyright (C) 2012 tsl0922@gmail.com
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST tsl0922 <tsl0922@gmail.com>, 2012.
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: 0.3\n"
+"Report-Msgid-Bugs-To: http://code.google.com/p/gipmsg/issues\n"
+"POT-Creation-Date: 2012-04-12 11:04+0800\n"
+"PO-Revision-Date: 2012-04-12 11:44+0800\n"
+"Last-Translator: tsl0922 <tsl0922@gmail.com>\n"
+"Language-Team: Chinese <tsl0922@gmail.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/main.c:43
+msgid ""
+"FATAL ERROR!!\n"
+"\n"
+"Can not bind TCP/UDP port(2425), is it in use?"
+msgstr ""
+"致命错误！！\n"
+"\n"
+"无法绑定TCP/UDP端口（2425）， 是否正在被占用？"
+
+#: src/mainwin.c:23
+msgid "My Friends"
+msgstr "我的好友"
+
+#: src/mainwin.c:24
+msgid "Myself"
+msgstr "我自己"
+
+#: src/mainwin.c:160
+msgid "Exit"
+msgstr "退出"
+
+#: src/mainwin.c:249
+msgid "Send Message"
+msgstr "发送消息"
+
+#: src/mainwin.c:251
+msgid "Refresh"
+msgstr "刷新"
+
+#: src/senddlg.c:501 src/senddlg.c:1121
+msgid "Close"
+msgstr "关闭"
+
+#: src/senddlg.c:506
+msgid "Send"
+msgstr "发送"
+
+#: src/senddlg.c:522
+msgid "User Information"
+msgstr "用户信息"
+
+#: src/senddlg.c:526
+msgid "User Photo"
+msgstr "用户照片"
+
+#: src/senddlg.c:561 src/senddlg.c:999
+msgid "Name"
+msgstr "文件名"
+
+#: src/senddlg.c:571 src/senddlg.c:1009
+msgid "Type"
+msgstr "类型"
+
+#: src/senddlg.c:577 src/senddlg.c:1015
+msgid "Size"
+msgstr "大小"
+
+#: src/senddlg.c:583
+msgid "Path"
+msgstr "路径"
+
+#: src/senddlg.c:644 src/senddlg.c:1422
+msgid "folder"
+msgstr "文件夹"
+
+#: src/senddlg.c:644 src/senddlg.c:1422
+msgid "file"
+msgstr "文件"
+
+#: src/senddlg.c:656
+msgid "Select file"
+msgstr "选择文件"
+
+#: src/senddlg.c:677
+msgid "Select folder"
+msgstr "选择文件夹"
+
+#: src/senddlg.c:758
+msgid "<span font='bold 8'>Send File</span>"
+msgstr "<span font='bold 8'>发送文件</span>"
+
+#: src/senddlg.c:761
+msgid "Cancel"
+msgstr "取消"
+
+#: src/senddlg.c:764
+msgid "File"
+msgstr "文件"
+
+#: src/senddlg.c:767 src/senddlg.c:1127
+msgid "Folder"
+msgstr "文件夹"
+
+#: src/senddlg.c:770
+msgid "Monitor"
+msgstr "监视"
+
+#: src/senddlg.c:806
+msgid "Select Save Path"
+msgstr "选择保存路径"
+
+#: src/senddlg.c:945 src/senddlg.c:1081
+msgid "Accept"
+msgstr "接收"
+
+#: src/senddlg.c:947 src/senddlg.c:1078
+msgid "Refuse"
+msgstr "拒收"
+
+#: src/senddlg.c:949 src/senddlg.c:1087
+msgid "Accept All"
+msgstr "接收所有"
+
+#: src/senddlg.c:951 src/senddlg.c:1084
+msgid "Refuse All"
+msgstr "拒收所有"
+
+#: src/senddlg.c:1021
+msgid "Save Path"
+msgstr "保存路径"
+
+#: src/senddlg.c:1027
+msgid "Recieved Time"
+msgstr "接收到的时间"
+
+#: src/senddlg.c:1067
+msgid "<span font='bold 8'>Recieve File</span>"
+msgstr "<span font='bold 8'>接收文件</span>"
+
+#: src/senddlg.c:1070
+msgid "Cancel Transfer"
+msgstr "取消传送"
+
+#: src/senddlg.c:1118
+msgid "<span font='bold 8'>Recieved File</span>"
+msgstr "<span font='bold 8'>接收文件</span>"
+
+#: src/senddlg.c:1124
+msgid "Open"
+msgstr "打开"
+
+#: src/senddlg.c:1349
+#, c-format
+msgid "Chating with %s(IP: %s)"
+msgstr "与 %s(IP: %s)对话中"
+
+#: src/senddlg.c:1355
+#, c-format
+msgid "No personal sign yet."
+msgstr "暂无个性签名."
+
+#: src/senddlg.c:1359
+#, c-format
+msgid ""
+"<i>NickName</i>  :%s\n"
+"<i>HostName</i>  :%s\n"
+"<i>LoginName</i> :%s\n"
+"<i>GroupName</i>:%s\n"
+"<i>IPAddress</i>    :%s"
+msgstr ""
+"<i>昵   称</i>:%s\n"
+"<i>主机名</i>:%s\n"
+"<i>登录名</i>:%s\n"
+"<i>组   名</i>:%s\n"
+"<i>IP地址</i>:%s"
+
+#: src/senddlg.c:1384
+msgid "(online)"
+msgstr "(在线)"
+
+#: src/senddlg.c:1467
+#, c-format
+msgid "Recieve file %s"
+msgstr "接收文件 %s"
+
+#: src/senddlg.c:1502
+#, c-format
+msgid "Folder %s recieve finish! recieved size: %s, average speed %s/s"
+msgstr "文件夹 %s 接收完毕! 接收到的大小: %s, 平均速度 %s/s"
+
+#: src/senddlg.c:1506
+#, c-format
+msgid "File %s recieve finish! recieved size: %s, average speed %s/s"
+msgstr "文件%s 接收完毕! 接收到的大小: %s, 平均速度 %s/s"
+
+#: src/senddlg.c:1560
+#, c-format
+msgid "%s request send %d files(folders) to you,please recieve at the right."
+msgstr "%s 请求发送 %d 文件(文件夹) 给你, 请在右侧接收."
+
+#: src/emotion.c:35 src/emotion.c:91
+msgid "Smile"
+msgstr "Smile"
+
+#: src/emotion.c:36
+msgid "Twitch nouth"
+msgstr "Twitch nouth"
+
+#: src/emotion.c:37
+msgid "Se"
+msgstr "Se"
+
+#: src/emotion.c:38
+msgid "Silly"
+msgstr "Silly"
+
+#: src/emotion.c:39
+msgid "Pride"
+msgstr "Pride"
+
+#: src/emotion.c:40
+msgid "Tears"
+msgstr "Tears"
+
+#: src/emotion.c:41
+msgid "Shy"
+msgstr "Shy"
+
+#: src/emotion.c:42
+msgid "Shut up"
+msgstr "Shut up"
+
+#: src/emotion.c:43 src/emotion.c:104
+msgid "Tired"
+msgstr "Tired"
+
+#: src/emotion.c:44 src/emotion.c:99
+msgid "Cry"
+msgstr "Cry"
+
+#: src/emotion.c:45 src/emotion.c:100
+msgid "Awkward"
+msgstr "Awkward"
+
+#: src/emotion.c:46 src/emotion.c:97
+msgid "Angry"
+msgstr "Angry"
+
+#: src/emotion.c:47 src/emotion.c:88
+msgid "Naughty"
+msgstr "Naughty"
+
+#: src/emotion.c:48 src/emotion.c:92
+msgid "Laugh"
+msgstr "Laugh"
+
+#: src/emotion.c:49
+msgid "Surprise"
+msgstr "Surprise"
+
+#: src/emotion.c:50
+msgid "Rotate"
+msgstr "Rotate"
+
+#: src/emotion.c:51 src/emotion.c:98
+msgid "Sad"
+msgstr "Sad"
+
+#: src/emotion.c:52
+msgid "Cool"
+msgstr "Cool"
+
+#: src/emotion.c:53
+msgid "Lenhan"
+msgstr "Lenhan"
+
+#: src/emotion.c:54
+msgid "Zhuakuang"
+msgstr "Zhuakuang"
+
+#: src/emotion.c:55
+msgid "Shuai"
+msgstr "Shuai"
+
+#: src/emotion.c:56
+msgid "Human skeleton"
+msgstr "Human skeleton"
+
+#: src/emotion.c:57
+msgid "Konck"
+msgstr "Konck"
+
+#: src/emotion.c:58
+msgid "Bye"
+msgstr "Bye"
+
+#: src/emotion.c:59
+msgid "CSweat"
+msgstr "CSweat"
+
+#: src/emotion.c:60
+msgid "KNose"
+msgstr "KNose"
+
+#: src/emotion.c:61
+msgid "Applause"
+msgstr "Applause"
+
+#: src/emotion.c:62
+msgid "Qiudale"
+msgstr "Qiudale"
+
+#: src/emotion.c:63
+msgid "Huaixiao"
+msgstr "Huaixiao"
+
+#: src/emotion.c:64 src/emotion.c:120
+msgid "Red Lips"
+msgstr "Red Lips"
+
+#: src/emotion.c:65 src/emotion.c:121
+msgid "Red Rose"
+msgstr "Red Rose"
+
+#: src/emotion.c:66 src/emotion.c:122
+msgid "Withered Rose"
+msgstr "Withered Rose"
+
+#: src/emotion.c:67 src/emotion.c:123
+msgid "Gift Box"
+msgstr "Gift Box"
+
+#: src/emotion.c:68 src/emotion.c:124
+msgid "Birthday Cake"
+msgstr "Birthday Cake"
+
+#: src/emotion.c:69 src/emotion.c:125
+msgid "Music"
+msgstr "Music"
+
+#: src/emotion.c:70 src/emotion.c:126
+msgid "Bulb"
+msgstr "Bulb"
+
+#: src/emotion.c:71 src/emotion.c:127
+msgid "Idea"
+msgstr "Idea"
+
+#: src/emotion.c:72 src/emotion.c:128
+msgid "Coffee"
+msgstr "Coffee"
+
+#: src/emotion.c:73 src/emotion.c:129
+msgid "Umbrella"
+msgstr "Umbrella"
+
+#: src/emotion.c:74 src/emotion.c:130
+msgid "Mobile Phone"
+msgstr "Mobile Phone"
+
+#: src/emotion.c:75
+msgid "Computer"
+msgstr "Computer"
+
+#: src/emotion.c:76
+msgid "Disappointed"
+msgstr "Disappointed"
+
+#: src/emotion.c:77
+msgid "Confused"
+msgstr "Confused"
+
+#: src/emotion.c:78 src/emotion.c:79 src/emotion.c:80 src/emotion.c:81
+#: src/emotion.c:82
+msgid "Worried"
+msgstr "Worried"
+
+#: src/emotion.c:83
+msgid "Drinks"
+msgstr "Drinks"
+
+#: src/emotion.c:84
+msgid "Goblet"
+msgstr "Goblet"
+
+#: src/emotion.c:85
+msgid "Angel"
+msgstr "Angel"
+
+#: src/emotion.c:86
+msgid "Thinking"
+msgstr "Thinking"
+
+#: src/emotion.c:87
+msgid "Great"
+msgstr "Great"
+
+#: src/emotion.c:89
+msgid "Idiot"
+msgstr "Idiot"
+
+#: src/emotion.c:90
+msgid "Sunglasses"
+msgstr "Sunglasses"
+
+#: src/emotion.c:93
+msgid "Wink"
+msgstr "Wink"
+
+#: src/emotion.c:94
+msgid "Surprised"
+msgstr "Surprised"
+
+#: src/emotion.c:95
+msgid "Tongue smile"
+msgstr "Tongue smile"
+
+#: src/emotion.c:96
+msgid "Warm smile"
+msgstr "Warm smile"
+
+#: src/emotion.c:101
+msgid "Irony"
+msgstr "Irony"
+
+#: src/emotion.c:102
+msgid "Illed"
+msgstr "Illed"
+
+#: src/emotion.c:103
+msgid "Gritting my teeth"
+msgstr "Gritting my teeth"
+
+#: src/emotion.c:105
+msgid "Secrecy"
+msgstr "Secrecy"
+
+#: src/emotion.c:106
+msgid "Googly eyes"
+msgstr "Googly eyes"
+
+#: src/emotion.c:107
+msgid "Sleeping Moon"
+msgstr "Sleeping Moon"
+
+#: src/emotion.c:108
+msgid "Rain"
+msgstr "Rain"
+
+#: src/emotion.c:109
+msgid "Clock"
+msgstr "Clock"
+
+#: src/emotion.c:110
+msgid "Red Heart"
+msgstr "Red Heart"
+
+#: src/emotion.c:111
+msgid "Broken Heart"
+msgstr "Broken Heart"
+
+#: src/emotion.c:112
+msgid "Face of Cat"
+msgstr "Face of Cat"
+
+#: src/emotion.c:113
+msgid "Face of Dog"
+msgstr "Face of Dog"
+
+#: src/emotion.c:114
+msgid "Snail"
+msgstr "Snail"
+
+#: src/emotion.c:115
+msgid "Star"
+msgstr "Star"
+
+#: src/emotion.c:116
+msgid "Sun"
+msgstr "Sun"
+
+#: src/emotion.c:117
+msgid "Rainbow"
+msgstr "Rainbow"
+
+#: src/emotion.c:118
+msgid "Hug left"
+msgstr "Hug left"
+
+#: src/emotion.c:119
+msgid "Hug right"
+msgstr "Hug right"

@@ -60,7 +60,8 @@ LT_PREREQ([2.2.6])
 PKG_CHECK_MODULES([GIPMSG], [
 		glib-2.0,
 		gthread-2.0,
-		gtk+-2.0
+		gtk+-2.0,
+		libnotify
 ])
 
 if test "$os_win32" = "yes"; then

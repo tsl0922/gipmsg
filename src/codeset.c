@@ -1,5 +1,12 @@
 #include <common.h>
 
+/*
+ * try to convert the given string's encode to utf-8 use the given codeset(seprated by ",")
+ * @param string
+ * @param len
+ * @param codeset
+ * @param encode (out)
+ */
 char *string_validate(const char *string, size_t len, const char *codeset, char **encode)
 {
 	const char *pptr, *ptr;
@@ -32,6 +39,13 @@ char *string_validate(const char *string, size_t len, const char *codeset, char 
 	return tstring;
 }
 
+/*
+ * convert string from one encode to another
+ * @param toencode
+ * @param fromencode
+ * @param string
+ * @param len
+ */
 char *convert_encode(char *toencode, char *fromencode, char *string, size_t len)
 {
 #define OUTBUG_SIZE (3*MAX_UDPBUF)
@@ -60,7 +74,6 @@ char *convert_encode(char *toencode, char *fromencode, char *string, size_t len)
 	}
 	iconv_close(cd);
 
-	DEBUG_ERROR("outbuf: %s, len: %d", outbuf, strlen(outbuf));
 	if(outptr != outbuf) {
 		*outptr = '\0';
 	}
@@ -68,6 +81,11 @@ char *convert_encode(char *toencode, char *fromencode, char *string, size_t len)
 	return outbuf;
 }
 
+/*
+ * check whether the given string's encode is utf-8
+ * @param _s
+ * @param is_asscii (out)
+ */
 bool is_utf8(const char *_s, bool *is_ascii)
 {
 	const unsigned char *s = (const unsigned char *)_s;

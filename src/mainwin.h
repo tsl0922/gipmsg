@@ -21,6 +21,8 @@
 #ifndef __GIPMSG_MAINWIN_H__
 #define __GIPMSG_MAINWIN_H__
 
+#define NOTIFY_IMAGE_SIZE 48
+
 void ipmsg_ui_init();
 SendDlg *send_dlg_open(User * user, bool * is_new);
 void active_dlg(SendDlg * dlg, bool active);
@@ -34,5 +36,7 @@ typedef void *(*MenuCallBackFunc) (GtkWidget * item, gpointer data);
 GtkWidget *create_menu_item(const char *name, const char *iconpath,
 				   GtkWidget * parent, gboolean sensitive,
 				   MenuCallBackFunc func, gpointer data);
+void show_notify(const char *summery, const char *body, const char *icon, gint timeout);
+
 
 #endif

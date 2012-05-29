@@ -30,5 +30,6 @@ User *find_user(ulong ipaddr);
 bool del_user(Message * msg);
 User *update_user(Message * msg);
 bool send_msg_to_user(User * user, const char *msg);
+guint get_online_users();
 
 #endif

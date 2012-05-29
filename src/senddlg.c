@@ -93,7 +93,7 @@ SendDlg *senddlg_new(User * user)
 	dlg->is_show_send_progress = FALSE;
 	senddlg_ui_init(dlg);
 
-	g_timeout_add(300, (GSourceFunc)update_progress_bar, dlg);
+	g_timeout_add(1000, (GSourceFunc)update_progress_bar, dlg);
 	
 	return dlg;
 }
@@ -145,7 +145,7 @@ static gboolean retry_message_handler(gpointer data)
 				char buf[MAX_BUF];
 				DEBUG_ERROR("Send fail!");
 				snprintf(buf, MAX_BUF,
-					 "Failed to send the following message to %s:\n%s",
+					 _("Message send fail!\nTo: %s \nContent: %s"),
 					 entry->user->nickName, entry->msg);
 				senddlg_add_info(dlg, buf);
 				//create retry button
@@ -154,8 +154,8 @@ static gboolean retry_message_handler(gpointer data)
 				    (CallbackArgs *)malloc(sizeof(CallbackArgs));
 				args->dlg = dlg;
 				args->data = entry;
-				recv_text_add_button(dlg, "Retry",
-						     "Resend message.",
+				recv_text_add_button(dlg, _("Retry"),
+						     _("Resend message."),
 						     (LinkButtonFunc)
 						     on_retry_link_clicked,
 						     args);
@@ -242,7 +242,7 @@ static void send_file_attach_info(SendDlg * dlg)
 		send_file_info(dlg->user, files);
 	gtk_list_store_clear(GTK_LIST_STORE(model));
 	snprintf(buf, MAX_BUF,
-		 "You request send %d files, %d folders(total: %d) to %s.",
+		 _("You request send %d files, %d folders(total: %d) to %s."),
 		 file_num, folder_num, file_num + folder_num,
 		 dlg->user->nickName);
 	senddlg_add_info(dlg, buf);
@@ -430,35 +430,35 @@ static GtkWidget *create_send_toolbar(SendDlg *dlg)
 
 	tool_icon = gtk_image_new_from_stock(GTK_STOCK_SELECT_FONT,
 				     GTK_ICON_SIZE_SMALL_TOOLBAR);
-	gtk_toolbar_append_item(GTK_TOOLBAR(toolbar), "Font",
-			"change font.", NULL, tool_icon,
+	gtk_toolbar_append_item(GTK_TOOLBAR(toolbar), _("Font"),
+			_("change font."), NULL, tool_icon,
 			G_CALLBACK(on_change_font_clicked), dlg);
 	gtk_toolbar_append_space(GTK_TOOLBAR(toolbar));
 
 	tool_icon = gtk_image_new_from_file(ICON_PATH "emotion.png");
 	gtk_toolbar_append_item(GTK_TOOLBAR(toolbar),
-			"Emotion", "send emotion.",
+			_("Emotion"), _("send emotion."),
 			NULL, tool_icon,
 			G_CALLBACK(on_send_emotion_clicked), dlg);
 	gtk_toolbar_append_space(GTK_TOOLBAR(toolbar));
 
 	tool_icon = gtk_image_new_from_file(ICON_PATH "image.png");
 	gtk_toolbar_append_item(GTK_TOOLBAR(toolbar),
-			"Picture", "send picture.",
+			_("Picture"), _("send picture."),
 			NULL, tool_icon,
 			G_CALLBACK(on_send_image_clicked), dlg);
 	gtk_toolbar_append_space(GTK_TOOLBAR(toolbar));
 
 	tool_icon = gtk_image_new_from_file(ICON_PATH "file.png");
 	gtk_toolbar_append_item(GTK_TOOLBAR(toolbar),
-			"File", "send file.",
+			_("File"), _("send file."),
 			NULL, tool_icon,
 			G_CALLBACK(on_send_file_clicked), dlg);
 	gtk_toolbar_append_space(GTK_TOOLBAR(toolbar));
 
 	tool_icon = gtk_image_new_from_file(ICON_PATH "folder.png");
 	gtk_toolbar_append_item(GTK_TOOLBAR(toolbar),
-			"Folder", "send folder.",
+			_("Folder"), _("send folder."),
 			NULL, tool_icon,
 			G_CALLBACK(on_send_folder_clicked), dlg);
 	gtk_toolbar_append_space(GTK_TOOLBAR(toolbar));
@@ -766,9 +766,9 @@ static GtkWidget *create_send_file_action_area(SendDlg *dlg)
 	gtk_box_pack_end(GTK_BOX(hbox), 
 		create_button(_("Folder"), (ButtonFunc)on_send_folder_clicked, dlg), 
 		FALSE, FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(hbox), 
-		create_button(_("Monitor"), (ButtonFunc)on_monitor_clicked, dlg), 
-		FALSE, FALSE, 0);
+//	gtk_box_pack_end(GTK_BOX(hbox), 
+//		create_button(_("Monitor"), (ButtonFunc)on_monitor_clicked, dlg), 
+//		FALSE, FALSE, 0);
 
 	return hbox;
 }
@@ -841,7 +841,7 @@ static void accept_selected_items(SendDlg *dlg)
 		if (gtk_tree_model_get_iter(model, &iter, path)) {
 			gtk_tree_model_get(model, &iter, RF_COL_INFO, &info, -1);
 			recv_file_entry(info, save_path, dlg);
-			gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+//				gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
 		}
 		slist = slist->next;
 	}
@@ -888,10 +888,12 @@ static void accept_all_items(SendDlg *dlg)
 		return;
 	if(!(save_path = get_save_path(GTK_WINDOW(dlg->dialog))))
 		return;
+	DEBUG_INFO("total: %d", gtk_tree_model_iter_n_children(model, NULL));
 	do {
 		gtk_tree_model_get(model, &iter, RF_COL_INFO, &info, -1);
+		DEBUG_INFO("recv file: %s", info->name);
 		recv_file_entry(info, save_path, dlg);
-		gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
+//			gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
 	} while (gtk_tree_model_iter_next(model, &iter));
 }
 
@@ -1332,6 +1334,10 @@ static void show_recv_file_box(SendDlg *dlg , gboolean show)
 		gtk_container_remove(GTK_CONTAINER(dlg->rvbox), dlg->recv_file_box);
 		gtk_container_add(GTK_CONTAINER(dlg->rvbox), dlg->info_area_box);
 		dlg->is_show_recv_file = FALSE;
+		GtkTreeModel *model = gtk_tree_view_get_model(GTK_TREE_VIEW(dlg->recv_file_tree));
+		gtk_list_store_clear(GTK_LIST_STORE(model));
+		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dlg->recv_progress_bar), 0);
+		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->recv_progress_bar), "");
 	}
 }
 
@@ -1356,8 +1362,8 @@ static void update_dlg_info(SendDlg * dlg)
 	}
 	name = g_strdup_printf("<b>%s</b>(%s) %s", dlg->user->nickName,
 		dlg->user->hostName, addr_str);
-	info = g_strdup_printf(_("<i>NickName</i>  :%s\n<i>HostName</i>  :%s\n"
-		"<i>LoginName</i> :%s\n<i>GroupName</i>:%s\n<i>IPAddress</i>    :%s"),
+	info = g_strdup_printf(_("<i>NickName</i>  : %s\n<i>HostName</i>  : %s\n"
+		"<i>LoginName</i> : %s\n<i>GroupName</i>: %s\n<i>IPAddress</i>    : %s"),
 			       dlg->user->nickName, dlg->user->hostName,
 			       dlg->user->userName, dlg->user->groupName, addr_str);
 	FREE_WITH_CHECK(addr_str);
@@ -1476,11 +1482,11 @@ static gboolean update_progress_bar(SendDlg *dlg)
 			double progress;
 			
 			progress = percent(dlg->recv_progress.tsize, dlg->recv_progress.ssize);
-			snprintf(buf, MAX_BUF, "%s/%s %s/s", tsize, ssize, speed);
+			snprintf(buf, MAX_BUF, "%s/%s", tsize, ssize);
 			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dlg->recv_progress_bar),progress/100);
 		}
 		if(dlg->recv_progress.info->attr & IPMSG_FILE_DIR) {
-			snprintf(buf, MAX_BUF, "%ld %s/s", dlg->recv_progress.ntrans, speed);
+			snprintf(buf, MAX_BUF, _("files: %ld(%s)"), dlg->recv_progress.ntrans, tsize);
 		}
 		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->recv_progress_bar), buf);
 		show_recv_progress_bar(dlg, TRUE);
@@ -1493,7 +1499,7 @@ static gboolean update_progress_bar(SendDlg *dlg)
 		format_filesize(recvsize, dlg->recv_progress.tsize);
 		dlg->recv_progress.tstatus = FILE_TS_NONE;
 
-		snprintf(buf, MAX_BUF, "%s/%s %s/s", tsize, ssize, speed);
+		snprintf(buf, MAX_BUF, "%s/%s", tsize, ssize);
 		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->recv_progress_bar), buf);
 		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dlg->recv_progress_bar),1);
 		show_recv_progress_bar(dlg, FALSE);
@@ -1509,6 +1515,7 @@ static gboolean update_progress_bar(SendDlg *dlg)
 		
 		senddlg_add_info(dlg, buf);
 		show_recv_progress_bar(dlg, FALSE);
+		show_recv_file_box(dlg, FALSE);
 		break;
 	}
 	case FILE_TS_NONE:
@@ -1516,13 +1523,40 @@ static gboolean update_progress_bar(SendDlg *dlg)
 	default:
 		break;
 	}
-	
+
+	format_filesize(tsize, dlg->send_progress.tsize);
+	format_filesize(ssize, dlg->send_progress.ssize);
+	if(dlg->send_progress.speed) {
+		format_filesize(speed, dlg->send_progress.speed);
+	}
 	switch(dlg->send_progress.tstatus) {
 	case FILE_TS_READY:
 		break;
 	case FILE_TS_DOING:
 		break;
 	case FILE_TS_FINISH:
+	{
+		char sendsize[30];
+		
+		format_filesize(sendsize, dlg->send_progress.tsize);
+		dlg->send_progress.tstatus = FILE_TS_NONE;
+
+		//snprintf(buf, MAX_BUF, "%s/%s", tsize, ssize);
+		//gtk_progress_bar_set_text(GTK_PROGRESS_BAR(dlg->send_progress_bar), buf);
+		//gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(dlg->send_progress_bar),1);
+		//show_send_progress_bar(dlg, FALSE);
+		
+		if(dlg->send_progress.info->attr & IPMSG_FILE_DIR) {
+			snprintf(buf, MAX_BUF, _("Folder %s send finish! send  size: %s, average speed %s/s"),
+				dlg->send_progress.info->name, sendsize, speed);
+		}
+		else {
+			snprintf(buf, MAX_BUF, _("File %s send  finish! send  size: %s, average speed %s/s"),
+				dlg->send_progress.info->name, sendsize, speed);
+		}
+		
+		senddlg_add_info(dlg, buf);
+	}
 		break;
 	case FILE_TS_NONE:
 		break;

@@ -28,6 +28,7 @@ struct _MainWindow {
 	GList *sendDlgList;
 	SendDlg *dlg;
 	User *user;
+	GtkWidget *prefs_dialog;
 
 	GtkWidget *window;
 	GtkWidget *eventbox;
@@ -37,6 +38,8 @@ struct _MainWindow {
 	GtkWidget *info_label;
 	GtkWidget *user_tree_scroll;
 	GtkWidget *user_tree;
+
+	NotifyNotification *notify;
 };
 
 typedef enum {

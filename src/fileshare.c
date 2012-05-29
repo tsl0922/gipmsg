@@ -63,8 +63,8 @@ typedef struct {
 	ulong *pnfilesend;
 } SendDataEntry;
 
-static gpointer recv_file_thread(gpointer data);
-static gpointer send_file_thread(gpointer data);
+static void *recv_file_thread(void *data);
+static void *send_file_thread(void *data);
 
 bool setup_file_info(FileInfo * info, const char *path)
 {
@@ -247,6 +247,12 @@ err_out:
 	return files;
 }
 
+/*
+ * send tcp request for downloading regular/dir file
+ * @param sock
+ * @param info
+ * @param user
+ */
 static bool send_request(SOCKET sock, FileInfo * info, User * user)
 {
 	struct sockaddr_in sockaddr;
@@ -291,7 +297,7 @@ static bool send_request(SOCKET sock, FileInfo * info, User * user)
  * @param size data length max recieve.
  * @return length of recieved data
  */
-static ulong recv_file_data(RecvDataEntry *entry, SendDlg *dlg)
+static ulong recv_file_data(RecvDataEntry *entry, SendDlg *dlg, bool is_dir)
 {
 	ulong max_n_recv = entry->size;
 	ulong total_n_recv = 0;
@@ -313,18 +319,27 @@ static ulong recv_file_data(RecvDataEntry *entry, SendDlg *dlg)
 		n_write = xwrite(entry->fd, buf, n_recv);
 		if (n_write == -1)
 			break;
-		GET_CLOCK_COUNT(&tv2);
-		speed = total_n_recv/difftimeval(tv2,tv1);
-		setup_progress_info(&dlg->recv_progress, entry->info, entry->fname, FILE_TS_DOING,
-			entry->size, total_n_recv, speed, *(entry->pnfilesrecv));
 		max_n_recv -= n_recv;
 		total_n_recv += n_recv;
+		
+		GET_CLOCK_COUNT(&tv2);
+		speed = total_n_recv/difftimeval(tv2,tv1);
+		if(!is_dir) {
+			setup_progress_info(&dlg->recv_progress, entry->info, entry->fname, FILE_TS_DOING,
+				entry->size, total_n_recv, speed, *(entry->pnfilesrecv));
+		}
 	}
 	(*(entry->pnfilesrecv))++;
 	
 	return total_n_recv;
 }
 
+/*
+ * recieve regular file
+ * @param info file information
+ * @param path save path
+ * @param dlg
+ */
 static ulong recv_regular_file(FileInfo * info, const char *path, SendDlg *dlg)
 {
 	SOCKET sock;
@@ -357,7 +372,7 @@ static ulong recv_regular_file(FileInfo * info, const char *path, SendDlg *dlg)
 		info, &nfilerecv);
 	/* recieve file data */
 	GET_CLOCK_COUNT(&tv1);
-	total_n_recv = recv_file_data(&entry, dlg);
+	total_n_recv = recv_file_data(&entry, dlg, false);
 	GET_CLOCK_COUNT(&tv2);
 	close(fd);
 	CLOSE(sock);
@@ -372,6 +387,11 @@ static ulong recv_regular_file(FileInfo * info, const char *path, SendDlg *dlg)
 
 #define PEEK_SIZE 8
 
+/*
+ * see @send_dir_header
+ * @param buf
+ * @param header
+ */
 static bool parse_dir_header(const char *buf, DirHeader * header)
 {
 	char *tok = NULL;
@@ -403,6 +423,11 @@ static bool parse_dir_header(const char *buf, DirHeader * header)
 
 #define HEAD_PEEK_SIZE (10)
 
+/* 
+ * recieve the dir header to the given buffer, see @send_dir_header
+ * @param sock
+ * @param buf
+ */
 static bool recv_dir_header(SOCKET sock, const char *buf)
 {
 	char *tok = NULL;
@@ -423,6 +448,12 @@ static bool recv_dir_header(SOCKET sock, const char *buf)
 	return true;
 }
 
+/*
+ * recieve dir file
+ * @param info file information
+ * @param path save path
+ * @param dlg
+ */
 static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 {
 	SOCKET sock;
@@ -464,8 +495,9 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 		case IPMSG_FILE_RETPARENT:	//parent dir
 			{
 				DEBUG_INFO("Dispatch file_retparent\n");
+				/* return to parent path */
 				build_path(tpath, tpath, "..");
-				if (strlen(info->name) >= strlen(tpath)) {	//return to base path
+				if (strlen(path) >= strlen(tpath)) {	//return to base path
 					is_end = true;
 					break;
 				}
@@ -474,7 +506,7 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 		case IPMSG_FILE_DIR:
 			{
 				DEBUG_INFO("Dispatch file_dir\n");
-				//construct full path
+				//jump into the dir
 				build_path(tpath, tpath, header.name);
 				if (access(tpath, F_OK) != 0) {	//check whether dir exists
 					mkdir(tpath, 00777);
@@ -483,6 +515,7 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 			}
 		case IPMSG_FILE_REGULAR:
 			{
+				struct timeval tv11, tv22;
 				DEBUG_INFO("Dispatch file_regular\n");
 				//construct full path
 				build_path(file_path, tpath, header.name);
@@ -500,8 +533,13 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 				setup_recv_data_entry(&entry, sock, fd, header.name, header.size,
 					info, &nfilerecv);
 				// recieve file data
-				n_recv = recv_file_data(&entry, dlg);
+				GET_CLOCK_COUNT(&tv11);
+				n_recv = recv_file_data(&entry, dlg, true);
 				total_n_recv += n_recv;
+				GET_CLOCK_COUNT(&tv22);
+				speed = total_n_recv/difftimeval(tv22,tv11);
+				setup_progress_info(&dlg->recv_progress, entry.info, entry.fname, FILE_TS_DOING,
+					entry.size, total_n_recv, speed, *(entry.pnfilesrecv));
 				close(fd);
 				continue;
 			}
@@ -519,6 +557,11 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 	return total_n_recv;
 }
 
+/*
+ * see @send_request
+ * @param extend
+ * @param request
+ */
 static bool parse_request(const char *extend, RequestInfo * request)
 {
 	char *tok = NULL;
@@ -550,6 +593,11 @@ static bool parse_request(const char *extend, RequestInfo * request)
 	return true;
 }
 
+/*
+ * send file data
+ * @param entry
+ * @param dlg
+ */
 static ulong send_file_data(SendDataEntry *entry, SendDlg *dlg)
 {
 	int fd;
@@ -594,6 +642,12 @@ static ulong send_file_data(SendDataEntry *entry, SendDlg *dlg)
 	return total_n_send;
 }
 
+/*
+ * send regular file
+ * @param sock
+ * @param info
+ * @param dlg
+ */
 static ulong send_regular_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 {
 	ulong total_n_send = 0;
@@ -620,6 +674,13 @@ static ulong send_regular_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 	return total_n_send;
 }
 
+/*
+ * format:
+ *    header-size:filename:file-size:fileattr[:extend-attr=val1
+ *	[,val2...][:extend-attr2=...]]:contents-data
+ *	Next headersize: Next filename...
+ *	(All hex format except for filename and contetns-data)
+ */
 static bool
 send_dir_header(SOCKET sock, const char *name, struct stat *statbuf,
 		bool is_retparent)
@@ -650,6 +711,15 @@ send_dir_header(SOCKET sock, const char *name, struct stat *statbuf,
 	return true;
 }
 
+/*
+ * send dir data
+ * @param sock
+ * @param path file/dir path
+ * @param dirname dir name
+ * @param info file information
+ * @param pnfilesend (out)num of files sended
+ * @param dlg
+ */
 ulong send_dir_data(SOCKET sock, const char *path, const char *dirname,
 	FileInfo *info, ulong *pnfilesend, SendDlg *dlg)
 {
@@ -741,6 +811,11 @@ static ulong send_dir_file(SOCKET sock, FileInfo * info, SendDlg *dlg)
 	return total_n_send;
 }
 
+/*
+ * check wether a download request is valid
+ * @param request
+ * @param dlg
+ */
 FileInfo *validate_request(RequestInfo * request, SendDlg *dlg)
 {
 	GList *entry = g_list_first(dlg->file_list);
@@ -759,7 +834,7 @@ FileInfo *validate_request(RequestInfo * request, SendDlg *dlg)
 	return file;
 }
 
-static gpointer process_request_thread(gpointer data)
+static void *process_request_thread(void *data)
 {
 	TcpRequestArgs *args = (TcpRequestArgs *) data;
 	SOCKET client_sock = args->client_sock;
@@ -784,15 +859,15 @@ static gpointer process_request_thread(gpointer data)
 	memset(buffer, 0, MAX_TCPBUF);
 	if ((n_recv = RECV(client_sock, buffer, MAX_TCPBUF, 0)) <= 0) {
 		DEBUG_ERROR("recv error!");
-		return (gpointer) 0;
+		pthread_exit(NULL);
 	}
 	DEBUG_INFO("recieved packet(TCP):%s", buffer);
 	if(!parse_message(ipaddr, &msg, buffer, n_recv))
-		return (gpointer) 0;
+		pthread_exit(NULL);
 	if(!parse_request(msg.message, &request))
-		return (gpointer) 0;
+		pthread_exit(NULL);
 	if(!(info = validate_request(&request, dlg)))
-		return (gpointer) 0;
+		pthread_exit(NULL);
 	info->offset = request.offset;
 	setup_progress_info(&pinfo, info, info->name, FILE_TS_READY,
 		info->size, 0, 0, 0);
@@ -815,10 +890,10 @@ static gpointer process_request_thread(gpointer data)
 
 	free_message_data(&msg);
 
-	return (gpointer) 0;
+	pthread_exit(NULL);
 }
 
-static gpointer recv_file_thread(gpointer data)
+static void *recv_file_thread(void *data)
 {
 	RecvThreadArgs *args = (RecvThreadArgs *) data;
 	FileInfo *info = args->info;
@@ -835,26 +910,29 @@ static gpointer recv_file_thread(gpointer data)
 		break;
 	}
 	FREE_WITH_CHECK(args);
+
+	pthread_exit(NULL);
 }
 
 void tcp_request_entry(SOCKET client_sock, ulong ipaddr)
 {
+	pthread_t process_thread;
 	TcpRequestArgs *args =
 	    (TcpRequestArgs *) malloc(sizeof(TcpRequestArgs));
 	args->client_sock = client_sock;
 	args->ipaddr = ipaddr;
 
-	g_thread_create((GThreadFunc) process_request_thread, args, FALSE,
-			NULL);
+	pthread_create(&process_thread, NULL, process_request_thread, args);
 }
 
 void recv_file_entry(FileInfo * info, const char *path, SendDlg *dlg)
 {
+	pthread_t recv_thread;
 	RecvThreadArgs *args =
 	    (RecvThreadArgs *) malloc(sizeof(RecvThreadArgs));
 	args->dlg = dlg;
 	args->info = info;
 	strcpy(args->path, path);
 
-	g_thread_create((GThreadFunc) recv_file_thread, args, FALSE, NULL);
+	pthread_create(&recv_thread, NULL, recv_file_thread, args);
 }

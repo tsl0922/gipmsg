@@ -32,6 +32,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -67,6 +68,7 @@
 
 #include <glib.h>
 #include <gtk/gtk.h>
+#include <libnotify/notify.h>
 
 #ifdef ENABLE_NLS
 #include <locale.h>
@@ -90,5 +92,6 @@
 #include "senddlg.h"
 #include "emotion.h"
 #include "fileshare.h"
+#include "transwin.h"
 
 #endif /*_COMMON_H_*/

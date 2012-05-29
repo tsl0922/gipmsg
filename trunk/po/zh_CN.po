@@ -44,6 +44,76 @@ msgstr "发送消息"
 msgid "Refresh"
 msgstr "刷新"
 
+#: src/mainwin.c:598
+msgid "Online Tip"
+msgstr "上线提示"
+
+#: src/mainwin.c:659
+msgid "Offline Tip"
+msgstr "下线提示"
+
+#: src/mainwin.c:892
+msgid "Online: <b>%d</b>"
+msgstr "在线人数: <b>%d</b>"
+
+#: src/senddlg.c:148
+#, c-format
+msgid "Message send fail!\nTo: %s \nContent: %s"
+msgstr "消息发送失败！\n发送给： %s\n内容： %s"
+
+#: src/senddlg.c:157
+msgid "Retry"
+msgstr "重试"
+
+#: src/senddlg.c:158
+msgid "Resend message."
+msgstr "重新发送消息."
+
+#: src/senddlg.c:245
+#, c-format
+msgid "You request send %d files, %d folders(total: %d) to %s."
+msgstr "你请求发送 %d 文件, %d 文件夹(总计: %d) 给 %s."
+
+#: src/senddlg.c:433
+msgid "Font"
+msgstr "字体"
+
+#: src/senddlg.c:434
+msgid "change font."
+msgstr "更改字体."
+
+#: src/senddlg.c:440
+msgid "Emotion"
+msgstr "表情"
+
+#: src/senddlg.c:440
+msgid "send emotion."
+msgstr "发送表情."
+
+#: src/senddlg.c:447
+msgid "Picture"
+msgstr "图片"
+
+#: src/senddlg.c:447
+msgid "send picture."
+msgstr "发送图片."
+
+#: src/senddlg.c:454 src/senddlg.c:764
+msgid "File"
+msgstr "文件"
+
+#: src/senddlg.c:454
+msgid "send file."
+msgstr "发送文件."
+
+#: src/senddlg.c:461 src/senddlg.c:767 src/senddlg.c:1127
+msgid "Folder"
+msgstr "文件夹"
+
+#: src/senddlg.c:461
+msgid "send folder."
+msgstr "发送文件夹."
+
 #: src/senddlg.c:501 src/senddlg.c:1121
 msgid "Close"
 msgstr "关闭"
@@ -100,14 +170,6 @@ msgstr "<span font='bold 8'>发送文件</span>"
 msgid "Cancel"
 msgstr "取消"
 
-#: src/senddlg.c:764
-msgid "File"
-msgstr "文件"
-
-#: src/senddlg.c:767 src/senddlg.c:1127
-msgid "Folder"
-msgstr "文件夹"
-
 #: src/senddlg.c:770
 msgid "Monitor"
 msgstr "监视"
@@ -150,7 +212,7 @@ msgstr "取消传送"
 
 #: src/senddlg.c:1118
 msgid "<span font='bold 8'>Recieved File</span>"
-msgstr "<span font='bold 8'>接收文件</span>"
+msgstr "<span font='bold 8'>已接收文件</span>"
 
 #: src/senddlg.c:1124
 msgid "Open"
@@ -169,17 +231,17 @@ msgstr "暂无个性签名."
 #: src/senddlg.c:1359
 #, c-format
 msgid ""
-"<i>NickName</i>  :%s\n"
-"<i>HostName</i>  :%s\n"
-"<i>LoginName</i> :%s\n"
-"<i>GroupName</i>:%s\n"
-"<i>IPAddress</i>    :%s"
+"<i>NickName</i>  : %s\n"
+"<i>HostName</i>  : %s\n"
+"<i>LoginName</i> : %s\n"
+"<i>GroupName</i>: %s\n"
+"<i>IPAddress</i>    : %s"
 msgstr ""
-"<i>昵   称</i>:%s\n"
-"<i>主机名</i>:%s\n"
-"<i>登录名</i>:%s\n"
-"<i>组   名</i>:%s\n"
-"<i>IP地址</i>:%s"
+"<i>昵   称</i> : %s\n"
+"<i>主机名</i> : %s\n"
+"<i>登录名</i> : %s\n"
+"<i>组   名</i> : %s\n"
+"<i>IP地址</i> : %s"
 
 #: src/senddlg.c:1384
 msgid "(online)"
@@ -190,6 +252,11 @@ msgstr "(在线)"
 msgid "Recieve file %s"
 msgstr "接收文件 %s"
 
+#: src/senddlg.c:1489
+#, c-format
+msgid "files: %ld(%s)"
+msgstr "文件数: %ld(%s)"
+
 #: src/senddlg.c:1502
 #, c-format
 msgid "Folder %s recieve finish! recieved size: %s, average speed %s/s"
@@ -198,7 +265,17 @@ msgstr "文件夹 %s 接收完毕! 接收到的大小: %s, 平均速度 %s/s"
 #: src/senddlg.c:1506
 #, c-format
 msgid "File %s recieve finish! recieved size: %s, average speed %s/s"
-msgstr "文件%s 接收完毕! 接收到的大小: %s, 平均速度 %s/s"
+msgstr "文件 %s 接收完毕! 接收到的大小: %s, 平均速度 %s/s"
+
+#: src/senddlg.c:1550
+#, c-format
+msgid "Folder %s send finish! send  size: %s, average speed %s/s"
+msgstr "文件夹 %s 发送完毕! 发送的大小: %s, 平均速度 %s/s"
+
+#: src/senddlg.c:1554
+#, c-format
+msgid "File %s send  finish! send  size: %s, average speed %s/s"
+msgstr "文件 %s 发送完毕! 发送的大小: %s, 平均速度 %s/s"
 
 #: src/senddlg.c:1560
 #, c-format

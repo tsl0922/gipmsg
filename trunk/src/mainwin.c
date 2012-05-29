@@ -53,6 +53,7 @@ static GList *user_tree_get_child_users(GtkTreeModel * model,
 					 GtkTreeIter * parent);
 static GList *user_tree_get_selected_users();
 static bool is_group_name_valid(gchar * groupName);
+static void update_online_status();
 
 static gboolean
 on_window_delete(GtkWidget * widget, GdkEvent * event, gpointer data)
@@ -78,7 +79,8 @@ void active_dlg(SendDlg * dlg, bool active)
 		//gtk_window_deiconify(GTK_WINDOW(dlg->dialog));
 		gtk_window_present(GTK_WINDOW(dlg->dialog));
 	} else {
-		gtk_window_iconify(GTK_WINDOW(dlg->dialog));
+		//gtk_window_iconify(GTK_WINDOW(dlg->dialog));
+		gtk_widget_hide(dlg->dialog);
 	}
 }
 
@@ -144,6 +146,11 @@ GtkWidget *create_menu_item(const char *name, const char *iconpath,
 	return item;
 }
 
+static void on_menu_preference(GtkMenuItem * menu_item, gpointer data)
+{
+	show_prefs_dialog(GTK_WINDOW(main_win.window));
+}
+
 static void on_menu_exit(GtkMenuItem * menu_item, gpointer data)
 {
 	ipmsg_send_br_exit();
@@ -157,6 +164,8 @@ statusicon_popup_menu(GtkStatusIcon * statusicon, guint button,
 	GtkWidget *menu;
 
 	menu = gtk_menu_new();
+//	create_menu_item(_("Preference"), NULL, menu, TRUE,
+//			 (MenuCallBackFunc) on_menu_preference, NULL);
 	create_menu_item(_("Exit"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_menu_exit, NULL);
 	gtk_widget_show_all(menu);
@@ -246,8 +255,8 @@ static gboolean on_user_tree_menu_popup(GtkWidget * treeview, GdkEventButton * e
 	gtk_tree_path_free(path);
 
 	menu = gtk_menu_new();
-	create_menu_item(_("Send Message"), NULL, menu, TRUE,
-			 (MenuCallBackFunc) on_menu_send_message, users);
+//	create_menu_item(_("Send Message"), NULL, menu, TRUE,
+//			 (MenuCallBackFunc) on_menu_send_message, users);
 	create_menu_item(_("Refresh"), NULL, menu, TRUE,
 			 (MenuCallBackFunc) on_menu_refresh, NULL);
 	gtk_widget_show_all(menu);
@@ -373,7 +382,7 @@ static void create_all_widget()
 	gtk_container_add(GTK_CONTAINER(main_win.eventbox), main_win.table);
 	gtk_container_add(GTK_CONTAINER(main_win.window), main_win.eventbox);
 
-	main_win.info_label = gtk_label_new("Ichat(online:0)");
+	main_win.info_label = gtk_label_new(NULL);
 	gtk_table_attach(GTK_TABLE(main_win.table), main_win.info_label, 0, 1,
 			 0, 1, GTK_EXPAND | GTK_FILL, 0, 0, 0);
 
@@ -416,6 +425,8 @@ static void create_all_widget()
 			 main_win.user_tree_scroll, 0, 1, 1, 2,
 			 GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
 
+	main_win.notify = notify_notification_new("welcome", "", ICON_PATH "icon.png");
+
 	GdkScreen *screen;
 	GdkColormap *colormap;
 
@@ -430,8 +441,10 @@ void ipmsg_ui_init()
 {
 	DEBUG_INFO("Initialize ui...");
 
+	notify_init("Gipmsg");
 	create_all_widget();
 	init_user_tree();
+	update_online_status();
 }
 
 static void init_user_tree()
@@ -576,6 +589,13 @@ void user_tree_add_user(User * user)
 			}
 		}
 	}
+	update_online_status(get_online_users());
+
+	char buf[MAX_BUF];
+	sprintf(buf, "<b>%s</b>\n%s %s@%s",
+			user->nickName, user->groupName,
+			user->userName, user->hostName);
+	show_notify(_("Online Tip"), buf, user->headIcon, 5000);
 }
 
 void user_tree_del_user(ulong ipaddr)
@@ -630,6 +650,13 @@ void user_tree_del_user(ulong ipaddr)
 						      &iter);
 		}
 	}
+	update_online_status(get_online_users()-1);
+
+	char buf[MAX_BUF];
+	sprintf(buf, "<b>%s</b>\n%s %s@%s",
+			tuser->nickName, tuser->groupName,
+			tuser->userName, tuser->hostName);
+	show_notify(_("Offline Tip"), buf, tuser->headIcon, 5000);
 }
 
 static void
@@ -669,7 +696,6 @@ void user_tree_update_user(User * user)
 	User *tuser;
 	gchar *groupName = NULL;
 
-	DEBUG_INFO("---------");
 	model = gtk_tree_view_get_model(GTK_TREE_VIEW(main_win.user_tree));
 	if (gtk_tree_model_get_iter_first(model, &iter)) {
 		do {
@@ -752,33 +778,6 @@ user_tree_find_user_in_group(GtkTreeModel * model,
 				}
 			}
 		} while (gtk_tree_model_iter_next(model, iter));
-	}
-
-	return false;
-}
-
-static bool
-user_tree_get_has_user(ulong ipaddr)
-{
-	GtkTreeModel * model;
-	GtkTreeIter iter;
-	gint type;
-	gchar *info;
-	
-	if (gtk_tree_model_get_iter_first(model, &iter)) {
-		do {
-			gtk_tree_model_get(model, &iter,
-				TYPE_COLUMN, &type,
-				INFO_COLUMN, &info, -1);
-			if (type == COL_TYPE_GROUP &&
-				(!strcmp(info, GROUP_FRIEND) ||
-				!strcmp(info, GROUP_MYSELF))) {
-				GtkTreeIter iter1;
-				if(user_tree_find_user_in_group(model, &iter, &iter1, ipaddr)) {
-					return true;
-				}
-			}
-		} while (gtk_tree_model_iter_next(model, &iter));
 	}
 
 	return false;
@@ -902,4 +901,34 @@ void notify_sendmsg(Message * msg)
 			main_win.user->userName, main_win.user->hostName, time);
 		modify_status_icon(buf, main_win.user->headIcon, TRUE);
 	}
+}
+
+static void update_online_status(guint users) {
+	char status[100];
+	sprintf(status, _("Online: <b>%d</b>"), users);
+	gtk_label_set_markup(GTK_LABEL(main_win.info_label), status);
+	gtk_tree_view_expand_all(GTK_TREE_VIEW(main_win.user_tree));
+}
+
+void show_notify(const char *summery, const char *body, const char *icon, gint timeout)
+{
+	GdkPixbuf    *pixbuf;
+
+	if(icon != NULL) {
+		pixbuf = gdk_pixbuf_new_from_file_at_size(
+					icon,
+					NOTIFY_IMAGE_SIZE,
+					NOTIFY_IMAGE_SIZE, NULL);
+	}
+	else {
+		pixbuf = gdk_pixbuf_new_from_file_at_size(
+					ICON_PATH "icon.png",
+					NOTIFY_IMAGE_SIZE,
+					NOTIFY_IMAGE_SIZE, NULL);
+	}
+	notify_notification_update(main_win.notify , summery, body, NULL);
+	notify_notification_set_icon_from_pixbuf(main_win.notify , pixbuf);
+	notify_notification_set_timeout(main_win.notify, timeout);
+	notify_notification_show(main_win.notify , NULL);
+	g_object_unref(pixbuf);
 }

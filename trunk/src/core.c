@@ -22,20 +22,35 @@
 
 SOCKET udp_sock;
 SOCKET tcp_sock;
+bool server = true;
 
-static gpointer udp_server_thread(gpointer data);
-static gpointer tcp_server_thread(gpointer data);
+static void *udp_server_thread(void *data);
+static void *tcp_server_thread(void *data);
 static void ipmsg_dispatch_message(SOCKET sock, Message * msg);
 
 void ipmsg_core_init()
 {
-	g_thread_create((GThreadFunc) udp_server_thread, NULL, FALSE, NULL);
-	g_thread_create((GThreadFunc) tcp_server_thread, NULL, FALSE, NULL);
+	pthread_t udp_thread;
+	pthread_t tcp_thread;
+	pthread_attr_t attr;
+
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	
+	pthread_create(&udp_thread, &attr, udp_server_thread, NULL);
+	pthread_create(&tcp_thread, &attr, tcp_server_thread, NULL);
+	
+	pthread_attr_destroy(&attr);
 
 	//tell everyone I am online.
 	ipmsg_send_br_entry();
 }
 
+/*
+ * create and bind tcp/udp port using the given IP address and port
+ * @param pAddr
+ * @param nPort
+ */
 bool socket_init(const char *pAddr, int nPort)
 {
 	struct sockaddr_in sockaddr;
@@ -100,14 +115,20 @@ static char *check_encode(char *buf, size_t buf_len,
 		*(ptr - 1) = NULL_OBJECT;
 		ptr += strlen(ptr) + 1;
 	}
-	if(fencode && strcasecmp("utf-8", fencode)
-		&& (outstr = convert_encode("utf-8", fencode, buf, buf_len))) {
+	
+	if(fencode && !strcasecmp("utf-8", fencode)) {
+		encode =  strdup("utf-8");
+		outstr = strdup(buf);
+	}
+	else if(fencode && (outstr = convert_encode("utf-8", 
+			fencode, buf, buf_len))) {
 		encode = strdup(fencode);
 	}
-	if(!outstr) {
+	else {
 		outstr = string_validate(buf, buf_len, 
 			(const char *)config_get_candidate_encode(), &encode);
 	}
+	
 	size = strlen(outstr);
 
 	/* restore ASCII character  to NULL terminator('\0') */
@@ -122,7 +143,7 @@ static char *check_encode(char *buf, size_t buf_len,
 	return outstr;
 }
 
-static gpointer udp_server_thread(gpointer data)
+static void *udp_server_thread(void *data)
 {
 	char buffer[MAX_UDPBUF];
 	struct sockaddr_in addr;
@@ -131,7 +152,7 @@ static gpointer udp_server_thread(gpointer data)
 
 	DEBUG_INFO("Initialize udp server on port %d...", config_get_port());
 	addr_len = sizeof(struct sockaddr_in);
-	while (1) {
+	while (server) {
 		Message msg;
 		char *tstring;
 		size_t len;
@@ -151,10 +172,10 @@ static gpointer udp_server_thread(gpointer data)
 		}
 		FREE_WITH_CHECK(tstring);
 	}
-	return (gpointer) 0;
+	pthread_exit(NULL);
 }
 
-static gpointer tcp_server_thread(gpointer data)
+static void *tcp_server_thread(void *data)
 {
 	struct sockaddr_in addr;
 	socklen_t addr_len;
@@ -164,17 +185,16 @@ static gpointer tcp_server_thread(gpointer data)
 	addr_len = sizeof(struct sockaddr_in);
 	if (listen(tcp_sock, 5)) {
 		DEBUG_INFO("listen error!");
-		return (gpointer) - 1;
+		pthread_exit(NULL);
 	}
-	while (1) {
+	while (server) {
 		if ((client_sock =
 		     ACCEPT(tcp_sock, (struct sockaddr *)&addr, &addr_len)) < 0)
 			continue;
 		DEBUG_INFO("new client!sockfd: %d", client_sock);
 		tcp_request_entry(client_sock, addr.sin_addr.s_addr);
 	}
-
-	return (gpointer) 0;
+	pthread_exit(NULL);
 }
 
 static void ipmsg_proc_br_entry(SOCKET sock, Message * msg)

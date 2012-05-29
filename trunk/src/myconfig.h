@@ -35,6 +35,14 @@
 typedef struct {
 } Config;
 
+typedef struct {
+	GtkWidget *dialog;
+	GtkWidget *nickname_entry;
+	GtkWidget *groupname_entry;
+	GtkWidget *headicon_image;
+	
+} PrefsDialog;
+
 bool config_init();
 bool config_read(Config * config);
 bool config_write(Config * config);
@@ -44,6 +52,7 @@ int config_get_port();
 char *config_get_nickname();
 char *config_get_groupname();
 char *config_get_default_encode();
+GtkWidget *create_prefs_dialog(GtkWindow *parent);
 
 extern Config config;
 #endif

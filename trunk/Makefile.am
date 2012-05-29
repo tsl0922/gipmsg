@@ -4,4 +4,4 @@ ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = src po pixmaps
 
-EXTRA_DIST = automk-linux.sh automk-win32.sh
+EXTRA_DIST = automk-linux.sh automk-win32.sh prot-eng.txt

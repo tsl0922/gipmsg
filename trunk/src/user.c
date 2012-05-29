@@ -21,7 +21,7 @@
 #include <common.h>
 
 GList *user_list = NULL;
-GStaticMutex user_list_mutex = G_STATIC_MUTEX_INIT;
+pthread_mutex_t user_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void fill_user_info(Message * msg, User * user)
 {
@@ -94,11 +94,11 @@ void clear_user_list()
 {
 	GList *entry;
 
-	g_static_mutex_lock(&user_list_mutex);
+	pthread_mutex_lock(&user_list_mutex);
 	g_list_foreach(user_list, (GFunc) free_user_data, NULL);
 	g_list_free(user_list);
 	user_list = NULL;
-	g_static_mutex_unlock(&user_list_mutex);
+	pthread_mutex_unlock(&user_list_mutex);
 }
 
 void print_user(User * user)
@@ -134,9 +134,9 @@ User *add_user(Message * msg)
 	tuser = find_user(msg->fromAddr);
 	if (!tuser) {
 		tuser = create_user(msg);
-		g_static_mutex_lock(&user_list_mutex);
+		pthread_mutex_lock(&user_list_mutex);
 		user_list = g_list_append(user_list, tuser);
-		g_static_mutex_unlock(&user_list_mutex);
+		pthread_mutex_unlock(&user_list_mutex);
 	}
 
 	return tuser;
@@ -185,7 +185,7 @@ bool del_user(Message * msg)
 
 	memset(&tmp_user, 0, sizeof(User));
 	tmp_user.ipaddr = msg->fromAddr;
-	g_static_mutex_lock(&user_list_mutex);
+	pthread_mutex_lock(&user_list_mutex);
 	entry = g_list_find_custom(user_list, &tmp_user, compare_by_ipaddr);
 	if (!entry) {
 		rc = false;
@@ -196,7 +196,7 @@ bool del_user(Message * msg)
 		g_list_free(entry);
 		rc = true;
 	}
-	g_static_mutex_unlock(&user_list_mutex);
+	pthread_mutex_unlock(&user_list_mutex);
 
 	return rc;
 }
@@ -212,13 +212,17 @@ User *update_user(Message * msg)
 
 	memset(&tmp_user, 0, sizeof(User));
 	tmp_user.ipaddr = msg->fromAddr;
-	g_static_mutex_lock(&user_list_mutex);
+	pthread_mutex_lock(&user_list_mutex);
 	entry = g_list_find_custom(user_list, &tmp_user, compare_by_ipaddr);
 	if (entry) {
 		user = entry->data;
 		fill_user_info(msg, user);
 	}
-	g_static_mutex_unlock(&user_list_mutex);
+	pthread_mutex_unlock(&user_list_mutex);
 
 	return user;
+}
+
+guint get_online_users() {
+	return g_list_length(user_list);
 }

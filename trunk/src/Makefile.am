@@ -19,5 +19,6 @@ gipmsg_SOURCES = \
 	fileshare.c fileshare.h \
 	mainwin.c mainwin.h \
 	senddlg.c senddlg.h \
+	transwin.c transwin.h \
 	emotion.c emotion.h \
 	main.c

@@ -1,5 +1,5 @@
 /* Gipmsg - Local networt message communication software
- *  
+ *
  * Copyright (C) 2012 tsl0922<tsl0922@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
@@ -92,6 +92,5 @@
 #include "senddlg.h"
 #include "emotion.h"
 #include "fileshare.h"
-#include "transwin.h"
 
 #endif /*_COMMON_H_*/

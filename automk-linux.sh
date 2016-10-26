@@ -1,4 +1,4 @@
-# !/bin/sh
+#!/bin/sh
 # Run this script to make and install the linux version of gipmsg
 
 if [ ! -f "configure" ]; then

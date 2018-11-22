@@ -21,7 +21,7 @@
 #ifndef __GIPMSG_CONFIG_H__
 #define __GIPMSG_CONFIG_H__
 
-#ifdef _LINUX
+#ifdef __linux__
 #define HOME_PATH            "/usr/share/gipmsg/"
 #else
 #define HOME_PATH            "./"

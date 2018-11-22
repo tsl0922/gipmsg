@@ -472,7 +472,7 @@ static ulong recv_dir_file(FileInfo * info, const char *path, SendDlg * dlg)
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		DEBUG_ERROR("can not create socket!\n");
-		return;
+		return -1;
 	}
 	if (!send_request(sock, info, dlg->user)) {
 		DEBUG_ERROR("send_request error!");
@@ -853,7 +853,7 @@ static void *process_request_thread(void *data)
 
 	user = find_user(ipaddr);
 	if (!user)
-		return;
+		return NULL;
 	dlg = send_dlg_open(user, &is_new);
 	if(is_new) active_dlg(dlg, false);
 	memset(buffer, 0, MAX_TCPBUF);

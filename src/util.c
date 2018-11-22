@@ -22,22 +22,20 @@
 char *get_sys_user_name()
 {
 	char *username = NULL;
-#ifdef _LINUX
-	struct passwd *pwd;
-	pwd = getpwuid(getuid());
-	if (!pwd) {
-		printf("Failed to get username.\n");
-	}
-	username = strdup(pwd->pw_name);
-#endif
-
-#ifdef WIN32
+#ifdef _WIN32
 	DWORD size = 127;
 	username = (char *)malloc(size);
 	if (!GetUserName(username, &size)) {
 		free(username);
 		username = NULL;
 	}
+#else
+	struct passwd *pwd;
+	pwd = getpwuid(getuid());
+	if (!pwd) {
+		printf("Failed to get username.\n");
+	}
+	username = strdup(pwd->pw_name);
 #endif
 	return username;
 }
@@ -59,16 +57,15 @@ char *get_sys_host_name()
 char *get_addr_str(ulong addr_data)
 {
 	char *addrstr = NULL;
-#ifdef _LINUX
-	addrstr = (char *)malloc(INET_ADDRSTRLEN);
-	inet_ntop(AF_INET, &addr_data, addrstr, INET_ADDRSTRLEN);
-#endif
 
-#ifdef WIN32
+#ifdef _WIN32
 	IN_ADDR IPAddr;
 
 	IPAddr.S_un.S_addr = addr_data;
 	addrstr = (char *)inet_ntoa(IPAddr);
+#else
+	addrstr = (char *)malloc(INET_ADDRSTRLEN);
+	inet_ntop(AF_INET, &addr_data, addrstr, INET_ADDRSTRLEN);
 #endif
 	return addrstr;
 }
@@ -79,7 +76,7 @@ AddrInfo *get_sys_addr_info(int *len_p)
 	int retLen = 0;
 	int sum, i;
 
-#ifdef _LINUX
+#ifdef __linux__
 	int sock;
 	struct ifconf ifc;
 	struct ifreq *ifr;
@@ -120,7 +117,7 @@ AddrInfo *get_sys_addr_info(int *len_p)
 	close(sock);
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 	PMIB_IPADDRTABLE pIPAddrTable;
 	DWORD dwSize = 0;
 
@@ -350,16 +347,14 @@ void format_filesize(char *buf, ulong filesize)
 char *get_exe_dir()
 {
 	char *dir;
-#ifdef WIN32
+#ifdef _WIN32
 	TCHAR buf[1024];
 	DWORD len;
 	if (!(len = GetModuleFileName(NULL, buf, 1024)))
 		return NULL;
 	buf[len] = '\0';
 	dir = strdup(buf);
-#endif
-
-#ifdef _LINUX
+#else
 	char buf[1024];
 	ssize_t len;
 	if ((len = readlink("/proc/self/exe", buf, 1024)) == -1)

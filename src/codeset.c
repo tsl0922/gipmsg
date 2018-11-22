@@ -13,7 +13,7 @@ char *string_validate(const char *string, size_t len, const char *codeset, char 
 	char *tstring, *cset;
 	bool is_ascii;
 
-	if(!string || !codeset || !encode) return;
+	if(!string || !codeset || !encode) return NULL;
 	
 	tstring = NULL;
 	*encode = NULL;

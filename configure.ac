@@ -6,42 +6,7 @@ AC_INIT([gipmsg], [0.3], [tsl0922@gmail.com])
 AM_INIT_AUTOMAKE
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([src/main.c])
-
-#Checks for platforms
 AC_CANONICAL_HOST
-dnl check for win32 platform
-AC_MSG_CHECKING([for native win32 platform])
-case "$host" in
-  *-*-mingw*)
-    os_win32=yes
-    ;;
-  *)
-    os_win32=no
-    ;;
-esac
-AC_MSG_RESULT([$os_win32])
-AM_CONDITIONAL(OS_WIN32, [test "$os_win32" = "yes"])
-
-if test "$os_win32" = "yes"; then
-  AC_DEFINE(WIN32, [1], [Defined if os is native Win32])
-fi
-
-dnl check for linux platform
-AC_MSG_CHECKING([for linux platform])
-case "$host" in
-  *-*-linux*)
-    os_linux=yes
-    ;;
-  *)
-    os_linux=no
-    ;;  
-esac
-AC_MSG_RESULT([$os_linux])
-AM_CONDITIONAL(OS_LINUX, [test "$os_linux" = "yes"])
-
-if test "$os_linux" = "yes"; then
-  AC_DEFINE(_LINUX, [1], [Defined if os is Linux])
-fi
 
 # Checks for programs.
 AC_PROG_CXX
@@ -64,9 +29,16 @@ PKG_CHECK_MODULES([GIPMSG], [
 		libnotify
 ])
 
-if test "$os_win32" = "yes"; then
-  LIBS="-lws2_32 -liphlpapi -mwindows $LIBS"
-fi
+case "$host_os" in
+	cygwin*|mingw*)
+		LIBS+=" -lws2_32 -liphlpapi -mwindows"
+		;;
+	darwin*)
+		CFLAGS+=" -I/usr/local/opt/libiconv/include"
+		LIBS+=" -L/usr/local/opt/libiconv/lib -liconv"
+		;;
+esac
+
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h locale.h netdb.h netinet/in.h stddef.h stdlib.h string.h sys/ioctl.h sys/socket.h sys/time.h unistd.h])
 
@@ -82,7 +54,7 @@ AC_CHECK_FUNCS([inet_ntoa memchr memset mkdir setlocale socket strcasecmp strchr
 # Gettext stuff.
 IT_PROG_INTLTOOL([0.40.0])
 AC_SUBST([GETTEXT_PACKAGE], [gipmsg])
-AM_GNU_GETTEXT_VERSION([0.17])
+AM_GNU_GETTEXT_VERSION([1.11])
 AM_GLIB_GNU_GETTEXT
 AC_DEFINE([GETTEXT_PACKAGE],[PACKAGE_TARNAME], [Define to the gettext package name.])
 

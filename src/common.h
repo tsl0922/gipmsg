@@ -42,7 +42,13 @@
 #include <iconv.h>
 #include <wchar.h>
 
-#ifdef _LINUX
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#include <winsock2.h>
+#include <Ws2tcpip.h>
+#include <iphlpapi.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -50,20 +56,14 @@
 #include <netinet/ip.h>
 #include <net/if.h>
 #include <netdb.h>
-#include <linux/if_packet.h>
-#include <linux/if_ether.h>
-#include <sys/sendfile.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <pwd.h>
+#ifdef __linux__
+#include <linux/if_packet.h>
+#include <linux/if_ether.h>
+#include <sys/sendfile.h>
 #endif
-
-#ifdef WIN32
-#include <windows.h>
-#include <io.h>
-#include <winsock2.h>
-#include <Ws2tcpip.h>
-#include <iphlpapi.h>
 #endif
 
 #include <glib.h>

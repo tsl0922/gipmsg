@@ -56,7 +56,7 @@ bool socket_init(const char *pAddr, int nPort)
 	struct sockaddr_in sockaddr;
 	struct hostent *pHostent;
 	int opt = 1;
-#ifdef WIN32
+#ifdef _WIN32
 	ULONG inAddr;
 	WSADATA hWSAData;
 	memset(&hWSAData, 0, sizeof(hWSAData));
